@@ -1,0 +1,7 @@
+*.org
+*.fasl
+*.elc
+*.eln
+*.eln.old
+.projectile
+
