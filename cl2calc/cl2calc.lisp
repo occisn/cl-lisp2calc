@@ -5,6 +5,13 @@
 
 (declaim (optimize (speed 0) (debug 3) (safety 3)))
 
+(defun delete-nth (n lst)
+  "Return a list which is the original LST without its N-th element. Not destructive.
+(v1 as of 2025-05-17, from cl-utils)"
+  (loop for elt in lst
+        for i from 0
+        unless (= i n) collect elt))
+
 (defun process-let (output-and-stack terms)
   "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (unless (>= (length terms) 2)
@@ -32,7 +39,7 @@
       (dolist (binding (reverse bindings))
         (let* ((symbol0 (car binding))
                (place-of-symbol-in-stack
-                 (position symbol0 stack :key #'cdr)))
+                (position symbol0 stack :key #'cdr)))
           (when (null place-of-symbol-in-stack)
             (error "(let) Variable ~a supposed to be deleted not found in stack" symbol0))
           ;; Add relevant output, for instance C-u 5 M-DEL:
@@ -43,10 +50,7 @@
                                (list "M-DEL"))
                               (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL"))))
                         output))
-          (setq stack
-                (loop for elt in stack
-                      for i from 0
-                      unless (= i place-of-symbol-in-stack) collect elt))))
+          (setq stack (delete-nth place-of-symbol-in-stack stack))))
       (cons output stack))))
 
 (defun process-progn (output-and-stack terms)
