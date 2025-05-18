@@ -14,6 +14,7 @@ recognized operators:
      - / unary (inverse) or not  
      - progn  
      - let or let*  
+     - (setq n (+ m 3)) with no use of the value, and only one assignment
 
 output-and-stack = (output . stack)  
     where output is the current state of the future Calc command  

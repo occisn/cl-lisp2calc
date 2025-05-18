@@ -7,10 +7,19 @@
 
 (defun delete-nth (n lst)
   "Return a list which is the original LST without its N-th element. Not destructive.
-(v1 as of 2025-05-17, from cl-utils)"
+(v1 as of 2025-05-17, from occisn's cl-utils)"
   (loop for elt in lst
         for i from 0
         unless (= i n) collect elt))
+
+(defun replace-nth (n new-value lst)
+  "Return a list which is the original LST where N-th element is replaced by NEW-VALUE. Not destructive.
+(v1 as of 2025-05-18, from occisn's cl-utils)"
+  (loop for elt in lst
+        for i from 0
+        when (= i n) collect new-value
+        unless (= i n) collect elt))
+;;; TODO : à mettre dans cl-utils
 
 (defun process-let (output-and-stack terms)
   "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -39,7 +48,7 @@
       (dolist (binding (reverse bindings))
         (let* ((symbol0 (car binding))
                (place-of-symbol-in-stack
-                (position symbol0 stack :key #'cdr)))
+                 (position symbol0 stack :key #'cdr)))
           (when (null place-of-symbol-in-stack)
             (error "(let) Variable ~a supposed to be deleted not found in stack" symbol0))
           ;; Add relevant output, for instance C-u 5 M-DEL:
@@ -52,6 +61,53 @@
                         output))
           (setq stack (delete-nth place-of-symbol-in-stack stack))))
       (cons output stack))))
+
+(defun process-setq (output-and-stack symbol value-exp)
+  "Convert a 'setq' with terms SYMBOL and VALUE-EXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+
+  ;; let's take the example of (setq i 6)
+  ;; with stack:
+  ;; 3: 5 = i
+  ;; 2: y
+  ;; 1: x
+  
+  (let* ((output-and-stack2 (process-atom-or-sexp output-and-stack value-exp))
+         (output2 (car output-and-stack2))
+         (stack2 (cdr output-and-stack2))
+
+         ;; stack2 :
+         ;; 4: 5 = i
+         ;; 3: y
+         ;; 2: x
+         ;; 1: 6
+         
+         (place-of-symbol-in-stack (position symbol stack2 :key #'cdr))
+         ;; = 3, which corresponds to 4 on stack
+         )
+    (when (null place-of-symbol-in-stack)
+      (error "(setq) Variable ~a not found in stack" symbol))
+    (when (= 0 place-of-symbol-in-stack)
+      (error "(setq) Variable ~a found in stack in position 0" symbol))
+    ;; 4: C-u 4 M-DEL C-u 3 TAB
+    (let* ((instrA (cond ;; (= 0 place-of-symbol-in-stack) is not possible 
+                     ((= 1 place-of-symbol-in-stack)
+                      (list "M-DEL"))
+                     (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL")))))
+           ;; stack:
+           ;; 3: y
+           ;; 2: x
+           ;; 1: 6
+           (instrB (cond ;; (= 1 place-of-symbol-in-stack) ==> do nothing
+                     ((= 2 place-of-symbol-in-stack)
+                      (list "TAB"))
+                     (t (reverse (list "C-u" place-of-symbol-in-stack "TAB")))))
+           (output3 (append
+                     instrB
+                     instrA
+                     output2))
+           (value3 (car (pop stack2)))
+           (stack3 (replace-nth (- place-of-symbol-in-stack 1) (cons value3 symbol) stack2)))
+      (cons output3 stack3))))
 
 (defun process-progn (output-and-stack terms)
   "Convert a 'progn' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -244,6 +300,8 @@
            (process-divide output-and-stack (cdr sexp)))
           ((or (equal 'let operator) (equal 'let* operator))
            (process-let output-and-stack (cdr sexp)))
+          ((equal 'setq operator)
+           (process-setq output-and-stack (car (cdr sexp)) (cadr (cdr sexp))))
           (t (error "Operator not recognized: ~a" operator)))))
 
 (defun process-number (output-and-stack number)
@@ -293,7 +351,7 @@
 
 (defun add-spaces (output)
   "Add necessary 'SPC' between numbers in OUTPUT, and return an updated output as a string.
-Also do it between number and DEL, or number and RET.
+Also do it between number and DEL / M-DEL / RET.
 For instance: (3 4) --> '3 SPC 4'
               (3 DEL) --> '3 SPC DEL'
               (3 RET) --> '3 RET'
@@ -301,7 +359,7 @@ For instance: (3 4) --> '3 SPC 4'
   (let ((is-number nil)
         (output2 nil))
     (dolist (elt output)
-      (if (or (numberp elt) (equal elt "DEL") (equal elt "RET"))
+      (if (or (numberp elt) (equal elt "DEL") (equal elt "M-DEL") (equal elt "RET"))
           (progn
             (when is-number
               (push "SPC" output2))
@@ -322,10 +380,9 @@ For instance: (3 4) --> '3 SPC 4'
          (output2 (car output-and-stack2))
          (output3 (reverse output2))
          (output4 (add-spaces output3)))
+    (format t "~%")
     (format t "code = ~a~%" code)
     (format t "final stack (newest first) = ~a~%" (cdr output-and-stack2))
-    ;; (format t "stack = ~a~%" (map 'list #'car (cdr output-and-stack2)))
-    ;; (format t "output3 = ~a~%" output3)
     (format t "output = ~a~%" output4)))
 
 (convert '(progn 444
@@ -336,4 +393,10 @@ For instance: (3 4) --> '3 SPC 4'
            (- 45 2 3)
            (/ 90 9 5)
            222) )
+
+(convert '(let ((i 4)) (setq i 5) (+ i 1)))
+
+(convert '(let ((i 4) (j 9)) (setq i 5) (+ i 1)))
+
+(convert '(let ((j 9) (i 4)) (setq i 5) (+ i j)))
 
