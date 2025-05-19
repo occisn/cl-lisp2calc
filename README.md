@@ -14,8 +14,13 @@ recognized operators:
      - / unary (inverse) or not  
      - progn  
      - let or let*  
-     - (setq n (+ m 3)) with no use of the value, and only one assignment
-
+     - (setq n (+ m 3)) with no use of the value, and only one assignment  
+     - (incf i)
+     
+Not in CL :
+     - (while (<= a b) body) but body shall not increase stack  
+     - variants with < >= >
+     
 output-and-stack = (output . stack)  
     where output is the current state of the future Calc command  
            at this stage of the conversion  

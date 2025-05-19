@@ -109,6 +109,10 @@
            (stack3 (replace-nth (- place-of-symbol-in-stack 1) (cons value3 symbol) stack2)))
       (cons output3 stack3))))
 
+(defun process-incf (output-and-stack symbol)
+  "Convert a 'incf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-atom-or-sexp output-and-stack `(setq ,symbol (+ ,symbol 1))))
+
 (defun process-progn (output-and-stack terms)
   "Convert a 'progn' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (dolist (term terms)
@@ -116,12 +120,109 @@
           (process-atom-or-sexp output-and-stack term)))
   output-and-stack)
 
+(defun add-to-output (output-and-stack elt)
+  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
+  (let ((output (car output-and-stack))
+        (stack (cdr output-and-stack)))
+    (cons (cons elt output) stack)))
+
+(defun append-to-output (output-and-stack lst)
+  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
+  (let ((output (car output-and-stack))
+        (stack (cdr output-and-stack)))
+    (cons (append lst output) stack)))
+
+(defun delete-newest-element-on-stack (output-and-stack)
+  "Delete newest element on stack of OUTPUT-AND-STACK (but keep output unchanged), and return the new output-and-stack."
+  (let ((output (car output-and-stack))
+        (stack (cdr output-and-stack)))
+    (cons output (cdr stack))))
+
+(defun deep-copy (lst)
+  (cond
+    ((null lst) nil)
+    ((atom lst) lst)
+    (t (cons (deep-copy (car lst))
+             (deep-copy (cdr lst))))))
+
+(defun process-while-<= (output-and-stack term1 term2 body)
+  "Convert a (while (<= term1 term2) body)' with terms TERM1, TERM2 and BODY, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+
+Caution: body shall not increase stack size!"
+  
+  (let* ((initial-output (car output-and-stack))
+         (initial-stack (deep-copy (cdr output-and-stack)))
+         (body (cons 'progn body))
+         (body-output-in-context (car (process-atom-or-sexp output-and-stack body)))
+         (body-output (subseq body-output-in-context 0 (- (length body-output-in-context) (length initial-output))))
+         (final-output nil)
+         (final-stack nil))
+
+    ;; (1) Express final output:
+    (setq output-and-stack (add-to-output output-and-stack "Z{"))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+    (setq output-and-stack (delete-newest-element-on-stack output-and-stack))
+    (setq output-and-stack (delete-newest-element-on-stack output-and-stack))
+    (setq output-and-stack (add-to-output output-and-stack "a>"))
+    (setq output-and-stack (add-to-output output-and-stack "Z/"))
+    (setq output-and-stack (append-to-output output-and-stack body-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z}"))
+    (setq final-output (car output-and-stack))
+
+    ;; (2) Express final stack:
+    (setq output-and-stack (cons nil initial-stack))
+    (loop
+     (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+     (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+     (let* ((term2-value (car (pop (cdr output-and-stack))))
+            (term1-value (car (pop (cdr output-and-stack)))))
+       (when (> term1-value term2-value)
+         (return))
+       (setq output-and-stack (process-atom-or-sexp output-and-stack body))))
+    (setq final-stack (cdr output-and-stack))
+    
+    (cons final-output final-stack)))
+
+(defun process-while (output-and-stack terms)
+  "Convert a '(while (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (let ((comparison-sexp (car terms))
+        (body (cdr terms)))
+    (unless (= 3 (length comparison-sexp))
+      (error "(while) Malformed comparison: ~a" comparison-sexp))
+    (let ((comparison-operator (car comparison-sexp))
+          (term1 (cadr comparison-sexp))
+          (term2 (caddr comparison-sexp)))
+      (cond ((equal '<= comparison-operator)
+             (process-while-<= output-and-stack term1 term2 body))
+            ((equal '< comparison-operator)
+             (process-while-<= output-and-stack term1 `(- ,term2 1) body))
+            ((equal '>= comparison-operator)
+             (process-while-<= output-and-stack term2 term1 body))
+            ((equal '> comparison-operator)
+             (process-while-<= output-and-stack term2 `(- ,term1 1) body))
+            (t (error "(while) Compararison operator not recognized: ~a" comparison-operator))))))
+
+(defun process-dotimes (output-and-stack terms)
+  "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (let ((iteration-sexp (car terms))
+        (body (cdr terms)))
+    (unless (= 2 (length iteration-sexp))
+      (error "(dotimes) Malformed iteration term: ~a" iteration-sexp))
+    (let ((symbol (car iteration-sexp))
+          (max-value (cadr iteration-sexp)))
+      (process-atom-or-sexp output-and-stack
+       `(let ((,symbol 0))
+          (while (< ,symbol ,max-value)
+            ,@body
+            (incf ,symbol)))))))
+
 (defun process-unary-minus (output-and-stack term)
   "Convert a '-' with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
 
   ;; (1) Add term to the stack:
   (setq output-and-stack
-            (process-atom-or-sexp output-and-stack term))
+        (process-atom-or-sexp output-and-stack term))
 
   ;; (2) Apply '-'
   (let ((output (car output-and-stack))
@@ -300,8 +401,14 @@
            (process-divide output-and-stack (cdr sexp)))
           ((or (equal 'let operator) (equal 'let* operator))
            (process-let output-and-stack (cdr sexp)))
+          ((or (equal 'while operator))
+           (process-while output-and-stack (cdr sexp)))
+          ((equal 'incf operator)
+           (process-incf output-and-stack (car (cdr sexp))))
           ((equal 'setq operator)
            (process-setq output-and-stack (car (cdr sexp)) (cadr (cdr sexp))))
+          ((equal 'dotimes operator)
+           (process-dotimes output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))
 
 (defun process-number (output-and-stack number)
@@ -351,15 +458,13 @@
 
 (defun add-spaces (output)
   "Add necessary 'SPC' between numbers in OUTPUT, and return an updated output as a string.
-Also do it between number and DEL / M-DEL / RET.
+Also do it between number and DEL.
 For instance: (3 4) --> '3 SPC 4'
-              (3 DEL) --> '3 SPC DEL'
-              (3 RET) --> '3 RET'
-"
+              (3 DEL) --> '3 SPC DEL'"
   (let ((is-number nil)
         (output2 nil))
     (dolist (elt output)
-      (if (or (numberp elt) (equal elt "DEL") (equal elt "M-DEL") (equal elt "RET"))
+      (if (or (numberp elt) (equal elt "DEL"))
           (progn
             (when is-number
               (push "SPC" output2))
@@ -385,18 +490,52 @@ For instance: (3 4) --> '3 SPC 4'
     (format t "final stack (newest first) = ~a~%" (cdr output-and-stack2))
     (format t "output = ~a~%" output4)))
 
-(convert '(progn 444
-           (let ((i 10) (j (+ i 2))) (- (+ 4 (* (/ 0.5) (mod 111 j)) 5)))
-           222) ) ; 
+(defmacro while (condition &body body)
+  `(loop while ,condition
+         do (progn ,@body)))
 
-(convert '(progn 444
-           (- 45 2 3)
-           (/ 90 9 5)
-           222) )
+;; PE 6 :
 
-(convert '(let ((i 4)) (setq i 5) (+ i 1)))
+(convert
+ '(let ((n 100) (res 0))
+   (dotimes (i (+ n 1))
+     (setq res (+ res i)))
+   (setq res (* res res))
+   (dotimes (i (+ n 1))
+     (setq res (- res (* i i))))
+   res))
 
-(convert '(let ((i 4) (j 9)) (setq i 5) (+ i 1)))
+;; PE 9
 
-(convert '(let ((j 9) (i 4)) (setq i 5) (+ i j)))
+;; ? division entière
+;; min
+;; max
+;; values
+
+(defun project-euler-9 ()
+  "Solve Project Euler 9."
+  (let ((n 1000)
+        (nb-solutions 0)
+        (res -1))
+    (let ((c n))
+      (while (>= c 3)
+        ;; upper limit for b:
+        ;;   (i) b < c
+        ;;   (ii) b = 1000-c-a with a >= 1 thus b <= 1000-c-1
+        ;; lower limit for b:
+        ;;   (i) 1 <= a < b thus b > 1
+        ;;   (ii) 1000-c = a+b with a < b thus 1000-c < 2b  
+        (let* ((bmax (min (- c 1) (- n c 1)))
+               (bmin (max 2 (/ (- n c) 2)))
+               (b bmax))
+          (while (>= b bmin)
+            (let ((a (- n b c)))
+              (when (= (* c c) (+ (* a a) (* b b)))
+                (incf nb-solutions)
+                (setq res (* a b c))))
+            (setq b (- b 1))))
+        (setq c (- c 1))))
+    (values res nb-solutions)))
+
+;; 31875000
 
