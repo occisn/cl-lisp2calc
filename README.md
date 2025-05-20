@@ -8,6 +8,8 @@ Recognized instructions in CL and Emacs Lisp
 
 recognized operators:  
      - mod  
+     - min (with 2 arguments)  
+     - max (with 2 arguments)  
      - +  
      - *  
      - - unary (divide) or not  
@@ -16,6 +18,7 @@ recognized operators:
      - let or let*  
      - (setq n (+ m 3)) with no use of the value, and only one assignment  
      - (incf i)
+     - (decf i)
      
 Not in CL :
      - (while (<= a b) body) but body shall not increase stack  

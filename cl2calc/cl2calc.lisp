@@ -113,6 +113,10 @@
   "Convert a 'incf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (process-atom-or-sexp output-and-stack `(setq ,symbol (+ ,symbol 1))))
 
+(defun process-decf (output-and-stack symbol)
+  "Convert a 'decf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-atom-or-sexp output-and-stack `(setq ,symbol (- ,symbol 1))))
+
 (defun process-progn (output-and-stack terms)
   "Convert a 'progn' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (dolist (term terms)
@@ -257,7 +261,7 @@ Caution: body shall not increase stack size!"
   "Convert a 'mod' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (let ((nb-of-terms (length terms)))
     (unless (= nb-of-terms 2)
-      (error "Not the right numbers of terms to apply mod in ~a" terms))
+      (error "Not the right numbers of terms to apply 'mod' in ~a" terms))
 
     ;; (1) Add terms to the stack:
     (dolist (term terms)
@@ -273,6 +277,52 @@ Caution: body shall not increase stack size!"
              (second-term (car (pop stack)))
              (result (mod second-term first-term)))
         (setq output (cons "%" output))
+        (setq stack (cons (cons result nil) stack)))
+      (cons output stack))))
+
+(defun process-min (output-and-stack terms)
+  "Convert a 'mod' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (let ((nb-of-terms (length terms)))
+    (unless (= nb-of-terms 2)
+      (error "Not the right numbers of terms to apply 'min' in ~a" terms))
+
+    ;; (1) Add terms to the stack:
+    (dolist (term terms)
+      (setq output-and-stack
+            (process-atom-or-sexp output-and-stack term)))
+
+    ;; (2) Apply 'min':
+    (let ((output (car output-and-stack))
+          (stack (cdr output-and-stack)))
+      (when (< (length stack) 2)
+        (error "Not enough elements in the stack to apply 'mod'; stack = ~a" stack))
+      (let* ((first-term (car (pop stack)))
+             (second-term (car (pop stack)))
+             (result (min second-term first-term)))
+        (setq output (append (reverse '("f" "m")) output))
+        (setq stack (cons (cons result nil) stack)))
+      (cons output stack))))
+
+(defun process-max (output-and-stack terms)
+  "Convert a 'mod' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (let ((nb-of-terms (length terms)))
+    (unless (= nb-of-terms 2)
+      (error "Not the right numbers of terms to apply 'max' in ~a" terms))
+
+    ;; (1) Add terms to the stack:
+    (dolist (term terms)
+      (setq output-and-stack
+            (process-atom-or-sexp output-and-stack term)))
+
+    ;; (2) Apply 'max':
+    (let ((output (car output-and-stack))
+          (stack (cdr output-and-stack)))
+      (when (< (length stack) 2)
+        (error "Not enough elements in the stack to apply 'mod'; stack = ~a" stack))
+      (let* ((first-term (car (pop stack)))
+             (second-term (car (pop stack)))
+             (result (max second-term first-term)))
+        (setq output (append (reverse '("f" "x")) output))
         (setq stack (cons (cons result nil) stack)))
       (cons output stack))))
 
@@ -387,6 +437,10 @@ Caution: body shall not increase stack size!"
            (process-progn output-and-stack (cdr sexp)))
           ((equal 'mod operator)
            (process-mod output-and-stack (cdr sexp)))
+          ((equal 'min operator)
+           (process-min output-and-stack (cdr sexp)))
+          ((equal 'max operator)
+           (process-max output-and-stack (cdr sexp)))
           ((equal '+ operator)
            (process-plus output-and-stack (cdr sexp)))
           ((equal '* operator)
@@ -405,6 +459,8 @@ Caution: body shall not increase stack size!"
            (process-while output-and-stack (cdr sexp)))
           ((equal 'incf operator)
            (process-incf output-and-stack (car (cdr sexp))))
+          ((equal 'decf operator)
+           (process-decf output-and-stack (car (cdr sexp))))
           ((equal 'setq operator)
            (process-setq output-and-stack (car (cdr sexp)) (cadr (cdr sexp))))
           ((equal 'dotimes operator)
@@ -535,7 +591,30 @@ For instance: (3 4) --> '3 SPC 4'
                 (setq res (* a b c))))
             (setq b (- b 1))))
         (setq c (- c 1))))
-    (values res nb-solutions)))
+    res))
 
 ;; 31875000
 
+(convert
+    '(let ((n 1000)
+        (nb-solutions 0)
+        (res -1))
+    (let ((c n))
+      (while (>= c 3)
+        ;; upper limit for b:
+        ;;   (i) b < c
+        ;;   (ii) b = 1000-c-a with a >= 1 thus b <= 1000-c-1
+        ;; lower limit for b:
+        ;;   (i) 1 <= a < b thus b > 1
+        ;;   (ii) 1000-c = a+b with a < b thus 1000-c < 2b  
+        (let* ((bmax (min (- c 1) (- n c 1)))
+               (bmin (max 2 (/ (- n c) 2)))
+               (b bmax))
+          (while (>= b bmin)
+            (let ((a (- n b c)))
+              (when (= (* c c) (+ (* a a) (* b b)))
+                (incf nb-solutions)
+                (setq res (* a b c))))
+            (setq b (- b 1))))
+        (setq c (- c 1))))
+    res))
