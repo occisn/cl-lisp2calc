@@ -5,24 +5,62 @@
 
 (declaim (optimize (speed 0) (debug 3) (safety 3)))
 
+;;; ====================
+;;; === BASIC MACROS ===
+;;; ====================
+
+(defmacro while (condition &body body)
+  `(loop while ,condition
+         do (progn ,@body)))
+
+;;; =================================
+;;; === BASIC OPERATIONS ON LISTS ===
+;;; =================================
+
 (defun delete-nth (n lst)
   "Return a list which is the original LST without its N-th element. Not destructive.
-(v1 as of 2025-05-17, from occisn's cl-utils)"
+(v1 as of 2025-05-17, from cl-utils repository of 'occisn' GitHub)"
   (loop for elt in lst
         for i from 0
         unless (= i n) collect elt))
 
 (defun replace-nth (n new-value lst)
   "Return a list which is the original LST where N-th element is replaced by NEW-VALUE. Not destructive.
-(v1 as of 2025-05-18, from occisn's cl-utils)"
+(v1 as of 2025-05-18, from cl-utils repository of 'occisn' GitHub)"
   (loop for elt in lst
         for i from 0
         when (= i n) collect new-value
         unless (= i n) collect elt))
-;;; TODO : à mettre dans cl-utils
+
+;;; ============================================
+;;; === BASIC OPERATIONS ON OUTPUT-AND-STACK ===
+;;; ============================================
+
+(defun add-to-output (output-and-stack elt)
+  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
+  (let ((output (car output-and-stack))
+        (stack (cdr output-and-stack)))
+    (cons (cons elt output) stack)))
+
+(defun append-to-output (output-and-stack lst)
+  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
+  (let ((output (car output-and-stack))
+        (stack (cdr output-and-stack)))
+    (cons (append lst output) stack)))
+
+(defun delete-newest-element-on-stack (output-and-stack)
+  "Delete newest element on stack of OUTPUT-AND-STACK (but keep output unchanged), and return the new output-and-stack."
+  (let ((output (car output-and-stack))
+        (stack (cdr output-and-stack)))
+    (cons output (cdr stack))))
+
+;;; =============================
+;;; === OPERATIONS PROCESSING ===
+;;; =============================
 
 (defun process-let (output-and-stack terms)
   "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+
   (unless (>= (length terms) 2)
     (error "Not enough terms for a 'let' within ~a" terms))
   (let ((bindings (car terms))
@@ -37,7 +75,7 @@
              (stack2 (cdr output-and-stack2))
              (stack3 (cons (cons (car (car stack2)) symbol0) (cdr stack2))))
         (setq output-and-stack (cons output2 stack3)))) ; dolist
-    
+
     ;; (2) Process body:
     (setq output-and-stack
           (process-sexp output-and-stack (cons 'progn body)))
@@ -124,38 +162,13 @@
           (process-atom-or-sexp output-and-stack term)))
   output-and-stack)
 
-(defun add-to-output (output-and-stack elt)
-  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (cons (cons elt output) stack)))
-
-(defun append-to-output (output-and-stack lst)
-  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (cons (append lst output) stack)))
-
-(defun delete-newest-element-on-stack (output-and-stack)
-  "Delete newest element on stack of OUTPUT-AND-STACK (but keep output unchanged), and return the new output-and-stack."
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (cons output (cdr stack))))
-
-(defun deep-copy (lst)
-  (cond
-    ((null lst) nil)
-    ((atom lst) lst)
-    (t (cons (deep-copy (car lst))
-             (deep-copy (cdr lst))))))
-
 (defun process-while-<= (output-and-stack term1 term2 body)
   "Convert a (while (<= term1 term2) body)' with terms TERM1, TERM2 and BODY, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 
 Caution: body shall not increase stack size!"
-  
+
   (let* ((initial-output (car output-and-stack))
-         (initial-stack (deep-copy (cdr output-and-stack)))
+         (initial-stack (cdr output-and-stack))
          (body (cons 'progn body))
          (body-output-in-context (car (process-atom-or-sexp output-and-stack body)))
          (body-output (subseq body-output-in-context 0 (- (length body-output-in-context) (length initial-output))))
@@ -177,13 +190,13 @@ Caution: body shall not increase stack size!"
     ;; (2) Express final stack:
     (setq output-and-stack (cons nil initial-stack))
     (loop
-     (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
-     (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
-     (let* ((term2-value (car (pop (cdr output-and-stack))))
-            (term1-value (car (pop (cdr output-and-stack)))))
-       (when (> term1-value term2-value)
-         (return))
-       (setq output-and-stack (process-atom-or-sexp output-and-stack body))))
+      (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+      (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+      (let* ((term2-value (car (pop (cdr output-and-stack))))
+             (term1-value (car (pop (cdr output-and-stack)))))
+        (when (> term1-value term2-value)
+          (return))
+        (setq output-and-stack (process-atom-or-sexp output-and-stack body))))
     (setq final-stack (cdr output-and-stack))
     
     (cons final-output final-stack)))
@@ -207,6 +220,74 @@ Caution: body shall not increase stack size!"
              (process-while-<= output-and-stack term2 `(- ,term1 1) body))
             (t (error "(while) Compararison operator not recognized: ~a" comparison-operator))))))
 
+(defun process-if-= (output-and-stack term1 term2 then-body else-body)
+  "Convert a (if (= term1 term2) then-body else-body)' with terms TERM1, TERM2, THEN-BODY and ELSE-BODY, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+
+  (when (null else-body)
+    (setq else-body '(progn)))
+  
+  (let* ((initial-output (car output-and-stack))
+         (initial-stack (cdr output-and-stack))
+         (then-body-output-in-context (car (process-atom-or-sexp output-and-stack then-body)))
+         (then-body-output (subseq then-body-output-in-context 0 (- (length then-body-output-in-context) (length initial-output))))
+         (else-body-output-in-context (car (process-atom-or-sexp output-and-stack else-body)))
+         (else-body-output (subseq else-body-output-in-context 0 (- (length else-body-output-in-context) (length initial-output))))
+         (final-output nil)
+         (final-stack nil))
+
+    ;; (1) Express final output:
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+    (setq output-and-stack (add-to-output output-and-stack "a="))
+    (setq output-and-stack (add-to-output output-and-stack "Z["))
+    (setq output-and-stack (append-to-output output-and-stack then-body-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z:"))
+    (setq output-and-stack (append-to-output output-and-stack else-body-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z]"))
+    (setq final-output (car output-and-stack))
+
+    ;; (2) Express final stack:
+    (setq output-and-stack (cons nil initial-stack))
+    ;; (format t "~%(if) initial-stack = ~a~%~%" initial-stack)
+    ;; (format t "~%(if) term1 = ~a~%~%" term1)
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+    (let* ((term2-value (car (pop (cdr output-and-stack))))
+           (term1-value (car (pop (cdr output-and-stack)))))
+      (if (= term1-value term2-value)
+          (setq output-and-stack (process-atom-or-sexp output-and-stack then-body))
+          (setq output-and-stack (process-atom-or-sexp output-and-stack else-body))))
+    (setq final-stack (cdr output-and-stack))
+    
+    (cons final-output final-stack)))
+
+(defun process-if (output-and-stack terms)
+  "Convert a '(if (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (let ((control-sexp (car terms))
+        (then-body (cadr terms))
+        (else-body (caddr terms)))
+    (unless (= 3 (length control-sexp))
+      (error "(if) Malformed control form: ~a" control-sexp))
+    (let ((comparison-operator (car control-sexp))
+          (term1 (cadr control-sexp))
+          (term2 (caddr control-sexp)))
+      (cond ((equal '= comparison-operator)
+             (process-if-= output-and-stack term1 term2 then-body else-body))
+            (t (error "(if) Compararison operator not recognized: ~a" comparison-operator))))))
+
+(defun process-when (output-and-stack terms)
+  "Convert a '(when (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (let ((control-sexp (car terms))
+        (body (cdr terms)))
+    (unless (= 3 (length control-sexp))
+      (error "(when) Malformed control form: ~a" control-sexp))
+    (let ((comparison-operator (car control-sexp))
+          (term1 (cadr control-sexp))
+          (term2 (caddr control-sexp)))
+      (cond ((equal '= comparison-operator)
+             (process-if-= output-and-stack term1 term2 `(progn ,@body) `(progn)))
+            (t (error "(when) Compararison operator not recognized: ~a" comparison-operator))))))
+
 (defun process-dotimes (output-and-stack terms)
   "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (let ((iteration-sexp (car terms))
@@ -216,10 +297,10 @@ Caution: body shall not increase stack size!"
     (let ((symbol (car iteration-sexp))
           (max-value (cadr iteration-sexp)))
       (process-atom-or-sexp output-and-stack
-       `(let ((,symbol 0))
-          (while (< ,symbol ,max-value)
-            ,@body
-            (incf ,symbol)))))))
+                            `(let ((,symbol 0))
+                               (while (< ,symbol ,max-value)
+                                 ,@body
+                                 (incf ,symbol)))))))
 
 (defun process-unary-minus (output-and-stack term)
   "Convert a '-' with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -299,7 +380,7 @@ Caution: body shall not increase stack size!"
       (let* ((first-term (car (pop stack)))
              (second-term (car (pop stack)))
              (result (min second-term first-term)))
-        (setq output (append (reverse '("f" "m")) output))
+        (setq output (append (reverse '("f" "n")) output))
         (setq stack (cons (cons result nil) stack)))
       (cons output stack))))
 
@@ -457,6 +538,10 @@ Caution: body shall not increase stack size!"
            (process-let output-and-stack (cdr sexp)))
           ((or (equal 'while operator))
            (process-while output-and-stack (cdr sexp)))
+          ((or (equal 'when operator))
+           (process-when output-and-stack (cdr sexp)))
+          ((or (equal 'if operator))
+           (process-if output-and-stack (cdr sexp)))
           ((equal 'incf operator)
            (process-incf output-and-stack (car (cdr sexp))))
           ((equal 'decf operator)
@@ -467,13 +552,20 @@ Caution: body shall not increase stack size!"
            (process-dotimes output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))
 
-(defun process-number (output-and-stack number)
-  "Convert a number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+(defun process-positive-number (output-and-stack number)
+  "Convert a positive number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (let* ((output (car output-and-stack))
          (stack (cdr output-and-stack))
          (output2 (cons number output))
          (stack2 (cons (cons number nil) stack)))
     (cons output2 stack2)))
+
+(defun process-number (output-and-stack number)
+  "Convert a number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (if (>= number 0)
+      (process-positive-number output-and-stack number)
+      (let ((number2 (- number)))
+        (process-sexp output-and-stack `(- ,number2)))))
 
 (defun process-variable (output-and-stack symbol)
   "Convert a variable SYMBOL (for intance I) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -512,21 +604,29 @@ Caution: body shall not increase stack size!"
          (process-sexp output-and-stack atom-or-sexp))
         (t (error "Neither number, symbol nor list: ~a" atom-or-sexp))))
 
+;;; ============
+;;; === MAIN ===
+;;; ============
+
 (defun add-spaces (output)
   "Add necessary 'SPC' between numbers in OUTPUT, and return an updated output as a string.
 Also do it between number and DEL.
+And 'n followed number'
 For instance: (3 4) --> '3 SPC 4'
               (3 DEL) --> '3 SPC DEL'"
-  (let ((is-number nil)
-        (output2 nil))
+
+  (let ((output2 nil))
     (dolist (elt output)
-      (if (or (numberp elt) (equal elt "DEL"))
-          (progn
-            (when is-number
-              (push "SPC" output2))
-            (setq is-number (numberp elt)))
-          (setq is-number nil))
-      (push elt output2))
+      (let ((last-elt (car output2))
+            (last-last-elt (cadr output2)))
+        (when
+            (or
+             (and (numberp elt) (numberp last-elt))
+             (and (equal "DEL" elt) (numberp last-elt))
+             (and (equal "RET" elt) (numberp last-elt))
+             (and (numberp elt) (equal "n" last-elt) (not (equal "f" last-last-elt))))
+          (push "SPC" output2))         ; when
+        (push elt output2)))
     (let ((output3 (format nil "~a" (car output2))))
       (loop for elt in (cdr output2)
             do (setq output3 (format nil "~a ~a" elt output3)))
@@ -546,10 +646,6 @@ For instance: (3 4) --> '3 SPC 4'
     (format t "final stack (newest first) = ~a~%" (cdr output-and-stack2))
     (format t "output = ~a~%" output4)))
 
-(defmacro while (condition &body body)
-  `(loop while ,condition
-         do (progn ,@body)))
-
 ;; PE 6 :
 
 (convert
@@ -563,58 +659,23 @@ For instance: (3 4) --> '3 SPC 4'
 
 ;; PE 9
 
-;; ? division entière
-;; min
-;; max
-;; values
-
-(defun project-euler-9 ()
-  "Solve Project Euler 9."
-  (let ((n 1000)
-        (nb-solutions 0)
-        (res -1))
-    (let ((c n))
-      (while (>= c 3)
-        ;; upper limit for b:
-        ;;   (i) b < c
-        ;;   (ii) b = 1000-c-a with a >= 1 thus b <= 1000-c-1
-        ;; lower limit for b:
-        ;;   (i) 1 <= a < b thus b > 1
-        ;;   (ii) 1000-c = a+b with a < b thus 1000-c < 2b  
-        (let* ((bmax (min (- c 1) (- n c 1)))
-               (bmin (max 2 (/ (- n c) 2)))
-               (b bmax))
-          (while (>= b bmin)
-            (let ((a (- n b c)))
-              (when (= (* c c) (+ (* a a) (* b b)))
-                (incf nb-solutions)
-                (setq res (* a b c))))
-            (setq b (- b 1))))
-        (setq c (- c 1))))
-    res))
+(when nil
+  (convert
+   '(let ((n 1000)
+          ;;(nb-solutions 0)
+          (res -1))
+     (let ((c n))
+       (while (>= c 3)
+         (let* ((bmax (min (- c 1) (- n c 1)))
+                (bmin (max 2 (/ (- n c) 2)))
+                (b bmax))
+           (while (>= b bmin)
+             (let ((a (- n b c)))
+               (when (= (* c c) (+ (* a a) (* b b)))
+                 ;;(incf nb-solutions)
+                 (setq res (* a b c))))
+             (setq b (- b 1))))
+         (setq c (- c 1))))
+     res)))
 
 ;; 31875000
-
-(convert
-    '(let ((n 1000)
-        (nb-solutions 0)
-        (res -1))
-    (let ((c n))
-      (while (>= c 3)
-        ;; upper limit for b:
-        ;;   (i) b < c
-        ;;   (ii) b = 1000-c-a with a >= 1 thus b <= 1000-c-1
-        ;; lower limit for b:
-        ;;   (i) 1 <= a < b thus b > 1
-        ;;   (ii) 1000-c = a+b with a < b thus 1000-c < 2b  
-        (let* ((bmax (min (- c 1) (- n c 1)))
-               (bmin (max 2 (/ (- n c) 2)))
-               (b bmax))
-          (while (>= b bmin)
-            (let ((a (- n b c)))
-              (when (= (* c c) (+ (* a a) (* b b)))
-                (incf nb-solutions)
-                (setq res (* a b c))))
-            (setq b (- b 1))))
-        (setq c (- c 1))))
-    res))

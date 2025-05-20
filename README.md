@@ -2,7 +2,11 @@
 
 Convert Lisp code (Common Lisp or Emacs Lisp) into stack-based GNU Emacs Calc.
 
-todo
+**TODO**
+
+Exemple : xx
+
+Add image
 
 Recognized instructions in CL and Emacs Lisp
 
@@ -23,7 +27,11 @@ recognized operators:
 Not in CL :
      - (while (<= a b) body) but body shall not increase stack  
      - variants with < >= >
-     
+
+TODO : functions specific to calc, as those prime-related  
+... we have to code them again here, so that codes could be executed in CL and Emacs Lisp also.
+
+how does it work?  
 output-and-stack = (output . stack)  
     where output is the current state of the future Calc command  
            at this stage of the conversion  
