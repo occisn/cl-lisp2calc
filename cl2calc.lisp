@@ -568,7 +568,7 @@ Caution: body shall not increase stack size!"
            (process-divide output-and-stack (cdr sexp)))
           ((or (equal 'let operator) (equal 'let* operator))
            (process-let output-and-stack (cdr sexp)))
-          ((string= "WHILE" (symbol-name operator))
+          ((equal 'while operator) ; (string= "WHILE" (symbol-name operator))
            (process-while output-and-stack (cdr sexp)))
           ((equal 'when operator)
            (process-when output-and-stack (cdr sexp)))
@@ -692,24 +692,23 @@ For instance: (3 4) --> '3 SPC 4'
 
 ;; PE 9:
 
-(when +nil+
-    (convert
-     '(let ((n 1000)
-            ;;(nb-solutions 0)
-            (res -1))
-       (let ((c n))
-         (while (>= c 3)
-           (let* ((bmax (min (- c 1) (- n c 1)))
-                  (bmin (max 2 (/ (- n c) 2)))
-                  (b bmax))
-             (while (>= b bmin)
-               (let ((a (- n b c)))
-                 (when (= (* c c) (+ (* a a) (* b b)))
-                   ;;(incf nb-solutions)
-                   (setq res (* a b c))))
-               (setq b (- b 1))))
-           (setq c (- c 1))))
-       res)))
+(convert
+ '(let ((n 1000)
+        ;;(nb-solutions 0)
+        (res -1))
+   (let ((c n))
+     (while (>= c 3)
+       (let* ((bmax (min (- c 1) (- n c 1)))
+              (bmin (max 2 (/ (- n c) 2)))
+              (b bmax))
+         (while (>= b bmin)
+           (let ((a (- n b c)))
+             (when (= (* c c) (+ (* a a) (* b b)))
+               ;;(incf nb-solutions)
+               (setq res (* a b c))))
+           (setq b (- b 1))))
+       (setq c (- c 1))))
+   res))
 
 ;; 31875000
 

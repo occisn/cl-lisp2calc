@@ -1,6 +1,6 @@
 # lisp2calc
 
-Convert Lisp code (Common Lisp or Emacs Lisp) into stack-based GNU Emacs Calc.
+Convert Lisp code (Common Lisp) into stack-based GNU Emacs Calc.
 
 **TODO**
 
