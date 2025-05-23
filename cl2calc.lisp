@@ -7,6 +7,7 @@
 
 (defparameter +nil+ nil)
 
+
 ;;; ====================
 ;;; === BASIC MACROS ===
 ;;; ====================
@@ -33,6 +34,24 @@
         for i from 0
         when (= i n) collect new-value
         unless (= i n) collect elt))
+
+;;; ===========
+;;; === XXX ===
+;;; ===========
+
+(defmacro pop-and-check-from-stack (stack operation-name)
+  "Pop the first element of STACK and checks that it is not associated with a variable, otherwise throw an error.
+OPERATION-NAME contains the name of the operation which calls this function (to be displayed in the error message)."
+  `(let ((newest-elt (pop ,stack)))
+    (when (not (equal newest-elt 'NIL)) 
+      (error "Operation '~a' pops the newest element out of the stack, but it is associated with a variable: ~a" ,operation-name newest-elt))))
+
+(defun check-stack-length (stack minimal-length operation-name)
+  "Check that the length of STACK is >= MINIMAL-LENGTH, otherwise throw an error.
+OPERATION-NAME contains the name of the operation which calls this function (to be displayed in the error message)."
+  (when (< (length stack) 2)
+    (error "Not enough elements (should be >= ~a) in the stack to apply '~a'; stack = ~a" minimal-length operation-name stack))
+  )
 
 ;;; ============================================
 ;;; === BASIC OPERATIONS ON OUTPUT-AND-STACK ===
@@ -104,26 +123,10 @@
 
 (defun process-setq (output-and-stack symbol value-exp)
   "Convert a 'setq' with terms SYMBOL and VALUE-EXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-
-  ;; let's take the example of (setq i 6)
-  ;; with stack:
-  ;; 3: 5 = i
-  ;; 2: y
-  ;; 1: x
-  
   (let* ((output-and-stack2 (process-atom-or-sexp output-and-stack value-exp))
          (output2 (car output-and-stack2))
          (stack2 (cdr output-and-stack2))
-
-         ;; stack2 :
-         ;; 4: 5 = i
-         ;; 3: y
-         ;; 2: x
-         ;; 1: 6
-         
-         (place-of-symbol-in-stack (position symbol stack2))
-         ;; = 3, which corresponds to 4 on stack
-         )
+         (place-of-symbol-in-stack (position symbol stack2)))
     (when (null place-of-symbol-in-stack)
       (error "(setq) Variable ~a not found in stack" symbol))
     (when (= 0 place-of-symbol-in-stack)
@@ -133,10 +136,6 @@
                      ((= 1 place-of-symbol-in-stack)
                       (list "M-DEL"))
                      (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL")))))
-           ;; stack:
-           ;; 3: y
-           ;; 2: x
-           ;; 1: 6
            (instrB (cond ;; (= 1 place-of-symbol-in-stack) ==> do nothing
                      ((= 2 place-of-symbol-in-stack)
                       (list "TAB"))
@@ -145,10 +144,8 @@
                      instrB
                      instrA
                      output2)))
-      (let ((newest-elt (pop stack2)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'setq' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-
+      (pop-and-check-from-stack stack2 "setq")
+      
       (cons output3 stack2))))
 
 (defun process-incf (output-and-stack symbol)
@@ -228,12 +225,8 @@ Caution: body shall not increase stack size!"
     (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
     (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
     (setq output-and-stack (add-to-output output-and-stack "a="))
-    (let ((newest-elt (pop (cdr output-and-stack))))
-      (when (not (equal newest-elt 'NIL)) 
-        (error "Comparison within 'if-=' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-    (let ((newest-elt (pop (cdr output-and-stack))))
-      (when (not (equal newest-elt 'NIL)) 
-        (error "Comparison within 'if-=' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
+    (pop-and-check-from-stack (cdr output-and-stack) "if-=")
+    (pop-and-check-from-stack (cdr output-and-stack) "if-=")
     (setq output-and-stack (add-to-output output-and-stack "Z["))
     (setq output-and-stack (append-to-output output-and-stack then-body-output))
     (setq final-stack (cdr output-and-stack))
@@ -285,153 +278,105 @@ Caution: body shall not increase stack size!"
                                  ,@body
                                  (incf ,symbol)))))))
 
-(defun process-unary-minus (output-and-stack term)
-  "Convert a '-' with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-
+(defun process-unary-operation (output-and-stack term calc-instructions-list operation-name)
+  "Convert an unary operation (negate, inverse...) with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+OPERATION-NAME contains the name of the operation (for error message).
+CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
+  
   ;; (1) Add term to the stack:
   (setq output-and-stack
         (process-atom-or-sexp output-and-stack term))
-
-  ;; (2) Apply '-'
+  
+  ;; (2) Apply the operation:
   (let ((output (car output-and-stack))
         (stack (cdr output-and-stack)))
-    (when (< (length stack) 1)
-      (error "Not enough element in the stack to apply unary '-'; stack = ~a" stack)) ; normally not possible
-    (let ((newest-elt (pop stack)))
-      (when (not (equal newest-elt 'NIL)) 
-        (error "Operation 'unary-minus' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
+    (check-stack-length stack 1 operation-name)
+    (pop-and-check-from-stack stack operation-name)
+    
     (cons
-     (cons "n" output)
+     (append (reverse calc-instructions-list) output)
      (cons 'NIL stack))))
+
+(defun process-unary-minus (output-and-stack term)
+  "Convert a '-' with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-unary-operation output-and-stack term '("n") "unary-minus"))
 
 (defun process-unary-divide (output-and-stack term)
   "Convert a '/' with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-unary-operation output-and-stack term '("&") "unary-divide"))
 
-  ;; (1) Add term to the stack:
-  (setq output-and-stack
-        (process-atom-or-sexp output-and-stack term))
+(defun process-binary-operation (output-and-stack terms calc-instructions-list operation-name)
+  "Convert a binary operation (min, max) with a list of two terms TERMS, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+OPERATION-NAME contains the name of the operation (for error message).
+CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
+  (let ((nb-of-terms (length terms)))
+    (unless (= nb-of-terms 2)
+      (error "Not the right numbers of terms to apply '~a' in ~a" operation-name terms))
 
-  ;; (2) Apply '/'
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (when (< (length stack) 1)
-      (error "Not enough element in the stack to apply unary '/'; stack = ~a" stack)) ; normally not possible
-    (let ((newest-elt (pop stack)))
-      (when (not (equal newest-elt 'NIL)) 
-        (error "Operation 'unary-divide' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-    (cons
-     (cons "&" output)
-     (cons 'NIL stack))))
+    ;; (1) Add terms to the stack:
+    (dolist (term terms)
+      (setq output-and-stack
+            (process-atom-or-sexp output-and-stack term)))
+
+    ;; (2) Apply operation:
+    (let ((output (car output-and-stack))
+          (stack (cdr output-and-stack)))
+      (check-stack-length stack 2 operation-name)
+      (pop-and-check-from-stack stack operation-name)
+      (pop-and-check-from-stack stack operation-name)
+      (setq stack (cons 'NIL stack))
+      (setq output (append (reverse calc-instructions-list) output))
+
+      (cons output stack))))
 
 (defun process-mod (output-and-stack terms)
   "Convert a 'mod' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  (let ((nb-of-terms (length terms)))
-    (unless (= nb-of-terms 2)
-      (error "Not the right numbers of terms to apply 'mod' in ~a" terms))
-
-    ;; (1) Add terms to the stack:
-    (dolist (term terms)
-      (setq output-and-stack
-            (process-atom-or-sexp output-and-stack term)))
-
-    ;; (2) Apply 'mod':
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
-      (when (< (length stack) 2)
-        (error "Not enough elements in the stack to apply 'mod'; stack = ~a" stack))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'mod' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'mod' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (setq stack (cons 'NIL stack))
-      (setq output (cons "%" output))
-
-      (cons output stack))))
+  (process-binary-operation output-and-stack terms '("%") "mod"))
 
 (defun process-min (output-and-stack terms)
   "Convert a 'min' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  (let ((nb-of-terms (length terms)))
-    (unless (= nb-of-terms 2)
-      (error "Not the right numbers of terms to apply 'min' in ~a" terms))
-
-    ;; (1) Add terms to the stack:
-    (dolist (term terms)
-      (setq output-and-stack
-            (process-atom-or-sexp output-and-stack term)))
-
-    ;; (2) Apply 'min':
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
-      (when (< (length stack) 2)
-        (error "Not enough elements in the stack to apply 'mod'; stack = ~a" stack))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'min' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'min' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (setq stack (cons 'NIL stack))
-      (setq output (append (reverse '("f" "n")) output))
-
-      (cons output stack))))
-
+  (process-binary-operation output-and-stack terms '("f" "n") "min"))
 
 (defun process-max (output-and-stack terms)
   "Convert a 'max' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-binary-operation output-and-stack terms '("f" "x") "max"))
+
+(defun process-lcm (output-and-stack terms)
+  "Convert a 'lcm' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-binary-operation output-and-stack terms '("k" "l") "lcm"))
+
+(defun process-multiple-arguments-operation (output-and-stack terms calc-instructions-list operation-name)
+  "Convert an operation with multiple arguments (+, *) with a list of terms TERMS, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+OPERATION-NAME contains the name of the operation (for error message).
+CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
   (let ((nb-of-terms (length terms)))
-    (unless (= nb-of-terms 2)
-      (error "Not the right numbers of terms to apply 'max' in ~a" terms))
+    (when (< nb-of-terms 2)
+      (error "Not enough terms to apply '~a' in terms ~a" operation-name terms))
 
     ;; (1) Add terms to the stack:
     (dolist (term terms)
       (setq output-and-stack
             (process-atom-or-sexp output-and-stack term)))
 
-    ;; (2) Apply 'max':
+    ;; (2) Apply the operation once or more:
     (let ((output (car output-and-stack))
           (stack (cdr output-and-stack)))
-      (when (< (length stack) 2)
-        (error "Not enough elements in the stack to apply 'mod'; stack = ~a" stack))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'max' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation 'max' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (setq stack (cons 'NIL stack))
-      (setq output (append (reverse '("f" "x")) output))
+      (dotimes (i (- nb-of-terms 1))
+        (check-stack-length stack 2 operation-name)
+        (pop-and-check-from-stack stack operation-name)
+        (pop-and-check-from-stack stack operation-name)
+        (setq stack (cons 'NIL stack))
+        (setq output (append calc-instructions-list output)))
 
       (cons output stack))))
 
 (defun process-plus (output-and-stack terms)
   "Convert a '+' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  (let ((nb-of-terms (length terms)))
-    (when (< nb-of-terms 2)
-      (error "Not enough terms to apply + in terms ~a" terms))
+  (process-multiple-arguments-operation output-and-stack terms '("+") "+"))
 
-    ;; (1) Add terms to the stack:
-    (dolist (term terms)
-      (setq output-and-stack
-            (process-atom-or-sexp output-and-stack term)))
-
-    ;; (2) Apply '+' once or more:
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
-      (dotimes (i (- nb-of-terms 1))
-        (when (< (length stack) 2)
-          (error "Not enough elements in the stack to apply '+'; stack = ~a" stack))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '+' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '+' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-        (setq stack (cons 'NIL stack))
-        (setq output (cons "+" output))) ; end of dotimes
-      
-      (cons output stack))))
+(defun process-mult (output-and-stack terms)
+  "Convert a '*' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-multiple-arguments-operation output-and-stack terms '("*") "*"))
 
 (defun process-minus (output-and-stack terms)
   "Convert a '-' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -449,56 +394,18 @@ Caution: body shall not increase stack size!"
 
       ;; (2) Apply '+' once or more:
       (dotimes (i (- nb-of-terms 2))
-        (when (< (length stack) 2)
-          (error "Not enough elements in the stack to apply '+' within '-'; stack = ~a" stack))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '-' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '-' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
+        (check-stack-length stack 2 "+ within -")
+        (pop-and-check-from-stack stack "+ within -")
+        (pop-and-check-from-stack stack "+ within -")
         (setq stack (cons 'NIL stack))
         (setq output (cons "+" output))) ; end of dotimes
 
       ;; (3) Apply final '-':
-      (when (< (length stack) 2)
-        (error "Not enough elements in the stack to apply '-'; stack = ~a" stack))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation '-' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation '-' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
+      (check-stack-length stack 2 "-")
+      (pop-and-check-from-stack stack "-")
+      (pop-and-check-from-stack stack "-")
       (setq stack (cons 'NIL stack))
       (setq output (cons "-" output))
-      
-      (cons output stack))))
-
-(defun process-mult (output-and-stack terms)
-  "Convert a '*' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  (let ((nb-of-terms (length terms)))
-    (when (< nb-of-terms 2)
-      (error "Not enough terms to apply * in terms ~a" terms))
-
-    ;; (1) Add terms to the stack:
-    (dolist (term terms)
-      (setq output-and-stack
-            (process-atom-or-sexp output-and-stack term)))
-
-    ;; (2) Apply '*' once or more:
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
-      (dotimes (i (- nb-of-terms 1))
-        (when (< (length stack) 2)
-          (error "Not enough elements in the stack to apply '*'; stack = ~a" stack))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '*' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '*' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-        (setq stack (cons 'NIL stack))
-        (setq output (cons "*" output))) ; end of dotimes
       
       (cons output stack))))
 
@@ -518,26 +425,16 @@ Caution: body shall not increase stack size!"
 
       ;; (2) Apply '*' once or more:
       (dotimes (i (- nb-of-terms 2))
-        (when (< (length stack) 2)
-          (error "Not enough elements in the stack to apply '*' within '/'; stack = ~a" stack))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '/' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-        (let ((newest-elt (pop stack)))
-          (when (not (equal newest-elt 'NIL)) 
-            (error "Operation '/' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
+        (check-stack-length stack 2 "* within /")
+        (pop-and-check-from-stack stack "* within /")
+        (pop-and-check-from-stack stack "* within /")
         (setq stack (cons 'NIL stack))
         (setq output (cons "*" output))) ; end of dotimes
 
       ;; (3) Apply final '/':
-      (when (< (length stack) 2)
-        (error "Not enough elements in the stack to apply '/'; stack = ~a" stack))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation '/' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
-      (let ((newest-elt (pop stack)))
-        (when (not (equal newest-elt 'NIL)) 
-          (error "Operation '/' pops the newest element out of the stack, but it is associated with a variable: ~a" newest-elt)))
+      (check-stack-length stack 2 "/")
+      (pop-and-check-from-stack stack "/")
+      (pop-and-check-from-stack stack "/")
       (setq stack (cons 'NIL stack))
       (setq output (cons "/" output))
       
@@ -554,6 +451,8 @@ Caution: body shall not increase stack size!"
            (process-min output-and-stack (cdr sexp)))
           ((equal 'max operator)
            (process-max output-and-stack (cdr sexp)))
+          ((equal 'lcm operator)
+           (process-lcm output-and-stack (cdr sexp)))
           ((equal '+ operator)
            (process-plus output-and-stack (cdr sexp)))
           ((equal '* operator)
@@ -677,6 +576,32 @@ For instance: (3 4) --> '3 SPC 4'
     (format t "output = ~a~%" output4)))
 
 
+(convert
+ '(let ((i 4)) (+ i 5)))
+
+;; PE 1 :
+
+(convert
+ '(let ((n 1000)
+        (res 0))
+   (dotimes (i n)
+     (when (= 0 (* (mod i 3) (mod i 5)))
+       (setq res (+ res i))))
+   res))
+
+;; 233168
+
+;; PE 5
+
+(convert
+  '(let ((n 20)
+        (res 1))
+    (dotimes (i n)
+          (setq res (lcm res (+ i 1))))
+    res))
+
+;; 232792560
+
 ;; PE 6:
 
 (convert
@@ -711,5 +636,6 @@ For instance: (3 4) --> '3 SPC 4'
    res))
 
 ;; 31875000
+
 
 ;;; end

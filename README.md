@@ -14,6 +14,7 @@ recognized operators:
      - mod  
      - min (with 2 arguments)  
      - max (with 2 arguments)  
+     - lcm (with 2 arguments)  
      - +  
      - *  
      - - unary (divide) or not  
