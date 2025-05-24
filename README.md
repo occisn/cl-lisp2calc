@@ -19,7 +19,7 @@ the following macro will manipulate the above stack and return the 3 first digit
 ```
 TAB RET H L F 1 + C-u 3 C-M-i - n f S F
 ``` 
-(to execute it, highlight instructions, `M-x read-kbd-macro`, then go to Calc and press `X`)
+(to execute it, copy these instructions to Emacs, highlight them, `M-x read-kbd-macro`, then go to Calc and press `X`)
 
 You can also refer to my project 'calc-programming', which essentially uses Calc to solve Project Euler puzzles.
 
@@ -43,7 +43,7 @@ Following code :
 1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % C-u 3 C-j 5 % * a= Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL C-u 1 TAB Z} DEL RET M-DEL M-DEL
 ```
 When executed in GNU Emacs Calc, it yields the right result.  
-(To execute it, highlight instructions, `M-x read-kbd-macro`, then go to Calc and press `X`)
+(to execute it, copy these instructions to Emacs, highlight them, `M-x read-kbd-macro`, then go to Calc and press `X`)
 
 Recognized Common Lisp macros or functions:  
      - `mod`  
