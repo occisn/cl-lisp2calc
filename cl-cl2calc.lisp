@@ -1,12 +1,10 @@
 (defpackage cl2calc
-  (:use :cl ))
+  (:use :cl)
+  (:export :convert))
 
 (in-package :cl2calc)
 
 (declaim (optimize (speed 0) (debug 3) (safety 3)))
-
-(defparameter +nil+ nil)
-
 
 ;;; ====================
 ;;; === BASIC MACROS ===
@@ -576,9 +574,6 @@ For instance: (3 4) --> '3 SPC 4'
     (format t "output = ~a~%" output4)))
 
 
-(convert
- '(let ((i 4)) (+ i 5)))
-
 ;; PE 1 :
 
 (convert
@@ -636,6 +631,5 @@ For instance: (3 4) --> '3 SPC 4'
    res))
 
 ;; 31875000
-
 
 ;;; end
