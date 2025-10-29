@@ -73,5 +73,7 @@ Code is interpreted, and output-and-stack = (output . stack) is updated at each 
 ... and stack is the current state of the stack (newest element first)  
        at this stage of the conversion  
        for instance: ((4 . NIL) (5. I))
+       
+Any comment? Open an [issue](https://github.com/occisn/cl-lisp2calc/issues), or start a discussion [here](https://github.com/occisn/cl-lisp2calc/discussions) or [at profile level](https://github.com/occisn/occisn/discussions).
 
 (end of README)
