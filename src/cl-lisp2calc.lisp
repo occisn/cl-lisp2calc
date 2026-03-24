@@ -1,8 +1,4 @@
-(defpackage cl2calc
-  (:use :cl)
-  (:export :convert))
-
-(in-package :cl2calc)
+(in-package :lisp2calc)
 
 (declaim (optimize (speed 0) (debug 3) (safety 3)))
 
@@ -41,7 +37,7 @@
   "Pop the first element of STACK and checks that it is not associated with a variable, otherwise throw an error.
 OPERATION-NAME contains the name of the operation which calls this function (to be displayed in the error message)."
   `(let ((newest-elt (pop ,stack)))
-    (when (not (equal newest-elt 'NIL)) 
+    (when (not (equal newest-elt 'NIL))
       (error "Operation '~a' pops the newest element out of the stack, but it is associated with a variable: ~a" ,operation-name newest-elt))))
 
 (defun check-stack-length (stack minimal-length operation-name)
@@ -130,7 +126,7 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
     (when (= 0 place-of-symbol-in-stack)
       (error "(setq) Variable ~a found in stack in position 0" symbol))
     ;; 4: C-u 4 M-DEL C-u 3 TAB
-    (let* ((instrA (cond ;; (= 0 place-of-symbol-in-stack) is not possible 
+    (let* ((instrA (cond ;; (= 0 place-of-symbol-in-stack) is not possible
                      ((= 1 place-of-symbol-in-stack)
                       (list "M-DEL"))
                      (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL")))))
@@ -143,7 +139,7 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
                      instrA
                      output2)))
       (pop-and-check-from-stack stack2 "setq")
-      
+
       (cons output3 stack2))))
 
 (defun process-incf (output-and-stack symbol)
@@ -211,7 +207,7 @@ Caution: body shall not increase stack size!"
 
   (when (null else-body)
     (setq else-body '(progn)))
-  
+
   (let* ((initial-output (car output-and-stack))
          (then-body-output-in-context (car (process-atom-or-sexp output-and-stack then-body)))
          (then-body-output (subseq then-body-output-in-context 0 (- (length then-body-output-in-context) (length initial-output))))
@@ -280,17 +276,17 @@ Caution: body shall not increase stack size!"
   "Convert an unary operation (negate, inverse...) with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 OPERATION-NAME contains the name of the operation (for error message).
 CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
-  
+
   ;; (1) Add term to the stack:
   (setq output-and-stack
         (process-atom-or-sexp output-and-stack term))
-  
+
   ;; (2) Apply the operation:
   (let ((output (car output-and-stack))
         (stack (cdr output-and-stack)))
     (check-stack-length stack 1 operation-name)
     (pop-and-check-from-stack stack operation-name)
-    
+
     (cons
      (append (reverse calc-instructions-list) output)
      (cons 'NIL stack))))
@@ -386,7 +382,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
     (dolist (term terms)
       (setq output-and-stack
             (process-atom-or-sexp output-and-stack term)))
-    
+
     (let ((output (car output-and-stack))
           (stack (cdr output-and-stack)))
 
@@ -404,7 +400,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (pop-and-check-from-stack stack "-")
       (setq stack (cons 'NIL stack))
       (setq output (cons "-" output))
-      
+
       (cons output stack))))
 
 (defun process-divide (output-and-stack terms)
@@ -417,7 +413,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
     (dolist (term terms)
       (setq output-and-stack
             (process-atom-or-sexp output-and-stack term)))
-    
+
     (let ((output (car output-and-stack))
           (stack (cdr output-and-stack)))
 
@@ -435,7 +431,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (pop-and-check-from-stack stack "/")
       (setq stack (cons 'NIL stack))
       (setq output (cons "/" output))
-      
+
       (cons output stack))))
 
 (defun process-sexp (output-and-stack sexp)
@@ -572,64 +568,5 @@ For instance: (3 4) --> '3 SPC 4'
     (format t "code = ~a~%" code)
     (format t "final stack (newest first) = ~a~%" (cdr output-and-stack2))
     (format t "output = ~a~%" output4)))
-
-
-;; PE 1 :
-
-(convert
- '(let ((n 1000)
-        (res 0))
-   (dotimes (i n)
-     (when (= 0 (* (mod i 3) (mod i 5)))
-       (setq res (+ res i))))
-   res))
-
-;; 233168
-
-;; PE 5
-
-(convert
-  '(let ((n 20)
-        (res 1))
-    (dotimes (i n)
-          (setq res (lcm res (+ i 1))))
-    res))
-
-;; 232792560
-
-;; PE 6:
-
-(convert
- '(let ((n 100) (res 0))
-   (dotimes (i (+ n 1))
-     (setq res (+ res i)))
-   (setq res (* res res))
-   (dotimes (i (+ n 1))
-     (setq res (- res (* i i))))
-   res))
-
-;; 25164150
-
-;; PE 9:
-
-(convert
- '(let ((n 1000)
-        ;;(nb-solutions 0)
-        (res -1))
-   (let ((c n))
-     (while (>= c 3)
-       (let* ((bmax (min (- c 1) (- n c 1)))
-              (bmin (max 2 (/ (- n c) 2)))
-              (b bmax))
-         (while (>= b bmin)
-           (let ((a (- n b c)))
-             (when (= (* c c) (+ (* a a) (* b b)))
-               ;;(incf nb-solutions)
-               (setq res (* a b c))))
-           (setq b (- b 1))))
-       (setq c (- c 1))))
-   res))
-
-;; 31875000
 
 ;;; end

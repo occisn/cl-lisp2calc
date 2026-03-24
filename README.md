@@ -30,7 +30,7 @@ _If we list all the natural numbers below 10 that are multiples of 3 or 5, we ge
 
 Following code :
 ``` lisp
-(cl-cl2calc:convert
+(lisp2calc:convert
  '(let ((n 1000)
         (res 0))
    (dotimes (i n)

@@ -5,3 +5,7 @@
 *.eln.old
 .projectile
 *to_be_deleted*.*
+.gitignore
+CLAUDE.md
+plan.md
+.claude/
