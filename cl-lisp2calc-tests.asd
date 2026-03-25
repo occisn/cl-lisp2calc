@@ -8,5 +8,6 @@
                                               (speed 0)))
                                   (funcall next))
                 :components ((:file "package-tests")
-                             (:file "main-tests"))))
+                             (:file "main-tests")
+                             (:file "emacs-tests"))))
   :perform (asdf:test-op (op c) (uiop:symbol-call :parachute :test :lisp2calc-tests)))

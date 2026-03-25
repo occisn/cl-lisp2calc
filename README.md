@@ -64,6 +64,39 @@ Recognized Common Lisp macros or functions:
 Recognized operators not available in Common Lisp:
      - `(while (<= a b) body)` but body shall not increase stack, and variants with < >= >
 
+## Testing
+
+Tests use the [Parachute](https://github.com/Shinmera/parachute) framework.
+
+```lisp
+(asdf:test-system "cl-lisp2calc")
+```
+
+### Emacs integration tests
+
+In addition to unit tests, an optional suite of integration tests executes the generated Calc macros in a real Emacs Calc session (via `emacs --batch`) and verifies the results. These tests are **disabled by default**.
+
+To enable them:
+
+```lisp
+(setf lisp2calc-tests::*run-emacs-tests* t)
+(asdf:test-system "cl-lisp2calc")
+```
+
+**Prerequisite:** `emacs` must be available on your `PATH`. On Windows, you may need to set the full path to the executable:
+
+```lisp
+(setf lisp2calc-tests::*emacs-program*
+      "C:/portable-programs/emacs-30.2/bin/emacs.exe")
+```
+
+You can also run a single macro manually from the command line:
+
+```bash
+emacs --batch -l elisp/calc-runner.el -f calc-runner--main "3 RET 4 +"
+# Output: {"status":"ok","result":"7","stack_depth":1,...}
+```
+
 **How does it work ?**
 
 Code is interpreted, and output-and-stack = (output . stack) is updated at each stage  
