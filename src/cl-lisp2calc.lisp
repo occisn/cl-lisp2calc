@@ -548,7 +548,8 @@ For instance: (3 4) --> '3 SPC 4'
              (and (equal "DEL" elt) (numberp last-elt))
              (and (equal "RET" elt) (numberp last-elt))
              (and (equal "C-u" elt) (numberp last-elt))
-             (and (numberp elt) (equal "n" last-elt) (not (equal "f" last-last-elt))))
+             (and (numberp elt) (equal "n" last-elt) (not (equal "f" last-last-elt)))
+             (and (equal "M-DEL" elt) (numberp last-elt) (not (equal "C-u" last-last-elt))))
           (push "SPC" output2))         ; when
         (push elt output2)))
     (let ((output3 (format nil "~a" (car output2))))

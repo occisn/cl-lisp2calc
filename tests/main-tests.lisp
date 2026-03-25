@@ -135,7 +135,7 @@
                 (extract-calc-output '(let* ((x 3) (y (+ x 1))) y))))
 
 (parachute:define-test test-setq
-  (parachute:is string= "3 SPC 5 M-DEL RET M-DEL"
+  (parachute:is string= "3 SPC 5 SPC M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 3)) (setq x 5) x))))
 
 (parachute:define-test test-incf
