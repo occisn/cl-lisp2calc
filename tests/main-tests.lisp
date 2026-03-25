@@ -155,11 +155,11 @@
                 (extract-calc-output '(progn (+ 1 2) (+ 3 4)))))
 
 (parachute:define-test test-if
-  (parachute:is string= "3 SPC RET 3 a= Z[ 1 Z: 0 Z] DEL"
+  (parachute:is string= "3 SPC RET 3 a= Z[ 1 Z: 0 Z] M-DEL"
                 (extract-calc-output '(let ((x 3)) (if (= x 3) 1 0)))))
 
 (parachute:define-test test-when
-  (parachute:is string= "3 SPC RET 3 a= Z[ RET 1 + Z: Z] DEL"
+  (parachute:is string= "3 SPC RET 3 a= Z[ RET 1 + Z: 0 Z] M-DEL"
                 (extract-calc-output '(let ((x 3)) (when (= x 3) (+ x 1))))))
 
 (parachute:define-test test-dotimes
