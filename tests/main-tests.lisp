@@ -135,15 +135,15 @@
                 (extract-calc-output '(let* ((x 3) (y (+ x 1))) y))))
 
 (parachute:define-test test-setq
-  (parachute:is string= "3 SPC 5 M-DEL C-u 1 TAB RET M-DEL"
+  (parachute:is string= "3 SPC 5 M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 3)) (setq x 5) x))))
 
 (parachute:define-test test-incf
-  (parachute:is string= "3 SPC RET 1 + M-DEL C-u 1 TAB RET M-DEL"
+  (parachute:is string= "3 SPC RET 1 + M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 3)) (incf x) x))))
 
 (parachute:define-test test-decf
-  (parachute:is string= "5 SPC RET 1 - M-DEL C-u 1 TAB RET M-DEL"
+  (parachute:is string= "5 SPC RET 1 - M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 5)) (decf x) x))))
 
 ;;; =========================
@@ -163,30 +163,30 @@
                 (extract-calc-output '(let ((x 3)) (when (= x 3) (+ x 1))))))
 
 (parachute:define-test test-dotimes
-  (parachute:is string= "0 SPC 0 Z{ RET 5 SPC 1 - a> Z/ C-j C-j + C-u 3 M-DEL TAB RET 1 + M-DEL C-u 1 TAB Z} DEL RET M-DEL"
+  (parachute:is string= "0 SPC 0 Z{ RET 5 SPC 1 - a> Z/ C-j C-j + C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL"
                 (extract-calc-output '(let ((sum 0)) (dotimes (i 5) (setq sum (+ sum i))) sum))))
 
 (parachute:define-test test-while-<=
   (parachute:is string=
-                "0 Z{ RET 3 a> Z/ RET 1 + M-DEL C-u 1 TAB Z} RET M-DEL"
+                "0 Z{ RET 3 a> Z/ RET 1 + M-DEL Z} RET M-DEL"
                 (extract-calc-output
                  `(let ((x 0)) (lisp2calc::while (<= x 3) (incf x)) x))))
 
 (parachute:define-test test-while-<
   (parachute:is string=
-                "0 Z{ RET 4 SPC 1 - a> Z/ RET 1 + M-DEL C-u 1 TAB Z} RET M-DEL"
+                "0 Z{ RET 4 SPC 1 - a> Z/ RET 1 + M-DEL Z} RET M-DEL"
                 (extract-calc-output
                  `(let ((x 0)) (lisp2calc::while (< x 4) (incf x)) x))))
 
 (parachute:define-test test-while->=
   (parachute:is string=
-                "5 Z{ 2 C-j a> Z/ RET 1 - M-DEL C-u 1 TAB Z} RET M-DEL"
+                "5 Z{ 2 C-j a> Z/ RET 1 - M-DEL Z} RET M-DEL"
                 (extract-calc-output
                  `(let ((x 5)) (lisp2calc::while (>= x 2) (decf x)) x))))
 
 (parachute:define-test test-while->
   (parachute:is string=
-                "5 Z{ 1 C-j 1 - a> Z/ RET 1 - M-DEL C-u 1 TAB Z} RET M-DEL"
+                "5 Z{ 1 C-j 1 - a> Z/ RET 1 - M-DEL Z} RET M-DEL"
                 (extract-calc-output
                  `(let ((x 5)) (lisp2calc::while (> x 1) (decf x)) x))))
 

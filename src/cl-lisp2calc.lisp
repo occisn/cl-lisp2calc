@@ -130,7 +130,8 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
                      ((= 1 place-of-symbol-in-stack)
                       (list "M-DEL"))
                      (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL")))))
-           (instrB (cond ;; (= 1 place-of-symbol-in-stack) ==> do nothing
+           (instrB (cond ((= 1 place-of-symbol-in-stack)
+                      nil)
                      ((= 2 place-of-symbol-in-stack)
                       (list "TAB"))
                      (t (reverse (list "C-u" place-of-symbol-in-stack "TAB")))))
