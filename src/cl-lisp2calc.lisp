@@ -6,46 +6,45 @@
 ;;; === BASIC MACROS ===
 ;;; ====================
 
-(defmacro while (condition &body body)
-  `(loop while ,condition
-         do (progn ,@body)))
+;; (defmacro while (condition &body body)
+;;   `(loop while ,condition
+;;          do (progn ,@body)))
 
 ;;; =================================
 ;;; === BASIC OPERATIONS ON LISTS ===
 ;;; =================================
 
 (defun delete-nth (n lst)
-  "Return a list which is the original LST without its N-th element. Not destructive.
-(v1 as of 2025-05-17, from cl-utils repository of 'occisn' GitHub)"
+  "Return a list which is the original LST without its N-th element. Not destructive."
   (loop for elt in lst
         for i from 0
         unless (= i n) collect elt))
 
 (defun replace-nth (n new-value lst)
-  "Return a list which is the original LST where N-th element is replaced by NEW-VALUE. Not destructive.
-(v1 as of 2025-05-18, from cl-utils repository of 'occisn' GitHub)"
+  "Return a list which is the original LST where N-th element is replaced by NEW-VALUE. Not destructive."
   (loop for elt in lst
         for i from 0
         when (= i n) collect new-value
         unless (= i n) collect elt))
 
-;;; ===========
-;;; === XXX ===
-;;; ===========
+
+;;; =================================
+;;; === BASIC OPERATIONS ON STACK ===
+;;; =================================
 
 (defmacro pop-and-check-from-stack (stack operation-name)
   "Pop the first element of STACK and checks that it is not associated with a variable, otherwise throw an error.
 OPERATION-NAME contains the name of the operation which calls this function (to be displayed in the error message)."
   `(let ((newest-elt (pop ,stack)))
-    (when (not (equal newest-elt 'NIL))
-      (error "Operation '~a' pops the newest element out of the stack, but it is associated with a variable: ~a" ,operation-name newest-elt))))
+     (when (not (equal newest-elt 'NIL))
+       (error "Operation '~a' pops the newest element out of the stack, but it is associated with a variable: ~a" ,operation-name newest-elt))))
 
 (defun check-stack-length (stack minimal-length operation-name)
   "Check that the length of STACK is >= MINIMAL-LENGTH, otherwise throw an error.
 OPERATION-NAME contains the name of the operation which calls this function (to be displayed in the error message)."
   (when (< (length stack) 2)
-    (error "Not enough elements (should be >= ~a) in the stack to apply '~a'; stack = ~a" minimal-length operation-name stack))
-  )
+    (error "Not enough elements (should be >= ~a) in the stack to apply '~a'; stack = ~a" minimal-length operation-name stack)))
+
 
 ;;; ============================================
 ;;; === BASIC OPERATIONS ON OUTPUT-AND-STACK ===
@@ -68,6 +67,7 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
   (let ((output (car output-and-stack))
         (stack (cdr output-and-stack)))
     (cons output (cdr stack))))
+
 
 ;;; =============================
 ;;; === OPERATIONS PROCESSING ===
@@ -556,10 +556,10 @@ And 'n followed number'
 For instance: (3 4) --> '3 SPC 4'
               (3 DEL) --> '3 SPC DEL'"
 
-  (let ((output2 nil))
+  (let ((sexp-output nil))
     (dolist (elt output)
-      (let ((last-elt (car output2))
-            (last-last-elt (cadr output2)))
+      (let ((last-elt (car sexp-output))
+            (last-last-elt (cadr sexp-output)))
         (when
             (or
              (and (numberp elt) (numberp last-elt))
@@ -568,25 +568,21 @@ For instance: (3 4) --> '3 SPC 4'
              (and (equal "C-u" elt) (numberp last-elt))
              (and (numberp elt) (equal "n" last-elt) (not (equal "f" last-last-elt)))
              (and (equal "M-DEL" elt) (numberp last-elt) (not (equal "C-u" last-last-elt))))
-          (push "SPC" output2))         ; when
-        (push elt output2)))
-    (let ((output3 (format nil "~a" (car output2))))
-      (loop for elt in (cdr output2)
-            do (setq output3 (format nil "~a ~a" elt output3)))
-      output3)))
+          (push "SPC" sexp-output))         ; when
+        (push elt sexp-output)))
+    (let ((string-output (format nil "~a" (car sexp-output))))
+      (loop for elt in (cdr sexp-output)
+            do (setq string-output (format nil "~a ~a" elt string-output)))
+      string-output)))
 
 (defun convert (code)
   "Convert CODE."
-  (let* ((stack1 nil)
-         (output1 nil)
-         (output-and-stack1 (cons output1 stack1))
-         (output-and-stack2 (process-atom-or-sexp output-and-stack1 code))
-         (output2 (car output-and-stack2))
-         (output3 (reverse output2))
-         (output4 (add-spaces output3)))
+  (let* ((initial-void-output-and-stack (cons nil nil))
+         (final-output-and-stack (process-atom-or-sexp initial-void-output-and-stack code))
+         (clean-output (add-spaces (reverse (car final-output-and-stack)))))
     (format t "~%")
     (format t "code = ~a~%" code)
-    (format t "final stack (newest first) = ~a~%" (cdr output-and-stack2))
-    (format t "output = ~a~%" output4)))
+    (format t "final stack (newest first) = ~a~%" (cdr final-output-and-stack))
+    (format t "output = ~a~%" clean-output)))
 
 ;;; end

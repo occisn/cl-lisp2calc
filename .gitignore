@@ -11,3 +11,4 @@ plan.md
 .claude/
 emacs-bridge.lisp
 BUG*.*
+.projectile
