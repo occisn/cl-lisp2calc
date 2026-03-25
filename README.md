@@ -2,8 +2,6 @@
 
 Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) into stack-based GNU Emacs Calc.
 
-**WORK IN PROGRESS**
-
 Calc is a stack-based calculator included in GNU Emacs. It can be used as a standard calculator similar to HP28/48 calculators, or for advanced mathematics.
 
 Its [manual](https://www.gnu.org/software/emacs/manual/html_mono/calc.html) is available on-line, starting with a [Getting Started](https://www.gnu.org/software/emacs/manual/html_mono/calc.html#Getting-Started) section encompassing a [demonstration](https://www.gnu.org/software/emacs/manual/html_mono/calc.html#Demonstration-of-Calc).
