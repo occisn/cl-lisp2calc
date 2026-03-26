@@ -72,6 +72,12 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
   (build-output-and-stack-from (append lst (output-of output-and-stack))
                                (stack-of output-and-stack)))
 
+(defmacro pop-and-check-from-stack-of (output-and-stack operation-name)
+  "Pop the newest element from the stack of OUTPUT-AND-STACK and check that it is not associated with a variable.
+OPERATION-NAME contains the name of the operation (for error message).
+Wrapper around pop-and-check-from-stack for use directly on an output-and-stack cons cell."
+  `(pop-and-check-from-stack (cdr ,output-and-stack) ,operation-name))
+
 (defun delete-newest-element-on-stack (output-and-stack)
   "Delete newest element on stack of OUTPUT-AND-STACK (but keep output unchanged), and return the new output-and-stack."
   (build-output-and-stack-from (output-of output-and-stack)
@@ -148,8 +154,8 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
   ;;   instrB: move the new value (currently on top) down to where the variable was (TAB / C-u N TAB)
   ;; After instrA, the variable's position shifts by -1 since the new value is above it.
   (let* ((output-and-stack2 (process-atom-or-sexp output-and-stack value-exp))
-         (output2 (car output-and-stack2))
-         (stack2 (cdr output-and-stack2))
+         (output2 (output-of output-and-stack2))
+         (stack2 (stack-of output-and-stack2))
          (place-of-symbol-in-stack (position symbol stack2)))
     (when (null place-of-symbol-in-stack)
       (error "(setq) Variable ~a not found in stack" symbol))
@@ -174,7 +180,7 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
       ;; Remove the anonymous top-of-stack entry (the evaluated new value)
       (pop-and-check-from-stack stack2 "setq")
 
-      (cons output3 stack2))))
+      (build-output-and-stack-from output3 stack2))))
 
 (defun process-incf (output-and-stack symbol)
   "Convert a 'incf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -209,12 +215,12 @@ Caution: body shall not increase stack size!"
   ;;   Z{ = start loop, Z} = end loop, Z/ = break if top-of-stack is nonzero
   ;; Condition: push term1 and term2, then a> (greater-than test) gives nonzero to break when term1 > term2.
 
-  (let* ((initial-output (car output-and-stack))
-         (initial-stack (cdr output-and-stack))
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
          (body (cons 'progn body))
          ;; Pre-compute the body's Calc instructions by running it in isolation
          ;; on the current state, then extracting only the new instructions
-         (body-output-in-context (car (process-atom-or-sexp output-and-stack body)))
+         (body-output-in-context (output-of (process-atom-or-sexp output-and-stack body)))
          (body-output (subseq body-output-in-context 0 (- (length body-output-in-context) (length initial-output))))
          (final-output nil))
 
@@ -230,10 +236,10 @@ Caution: body shall not increase stack size!"
     (setq output-and-stack (add-to-output output-and-stack "Z/"))
     (setq output-and-stack (append-to-output output-and-stack body-output))
     (setq output-and-stack (add-to-output output-and-stack "Z}"))
-    (setq final-output (car output-and-stack))
+    (setq final-output (output-of output-and-stack))
 
     ;; Restore initial stack: the loop doesn't change net stack size
-    (cons final-output initial-stack)))
+    (build-output-and-stack-from final-output initial-stack)))
 
 (defun process-while (output-and-stack terms)
   "Convert a '(while (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -279,19 +285,19 @@ Caution: body shall not increase stack size!"
   (when (null else-body)
     (setq else-body '(progn)))
 
-  (let* ((initial-output (car output-and-stack))
-         (initial-stack (cdr output-and-stack))
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
          ;; Pre-compute both branches to extract their Calc instructions and stack effects.
          ;; Each branch is processed against the current state; we then strip the
          ;; pre-existing output to isolate only the branch's contribution.
          (then-result (process-atom-or-sexp output-and-stack then-body))
-         (then-body-output-in-context (car then-result))
+         (then-body-output-in-context (output-of then-result))
          (then-body-output (subseq then-body-output-in-context 0 (- (length then-body-output-in-context) (length initial-output))))
-         (then-stack-delta (- (length (cdr then-result)) (length initial-stack)))
+         (then-stack-delta (- (length (stack-of then-result)) (length initial-stack)))
          (else-result (process-atom-or-sexp output-and-stack else-body))
-         (else-body-output-in-context (car else-result))
+         (else-body-output-in-context (output-of else-result))
          (else-body-output (subseq else-body-output-in-context 0 (- (length else-body-output-in-context) (length initial-output))))
-         (else-stack-delta (- (length (cdr else-result)) (length initial-stack)))
+         (else-stack-delta (- (length (stack-of else-result)) (length initial-stack)))
          (branch-stack-delta (max then-stack-delta else-stack-delta))
          (final-output nil)
          (final-stack nil))
@@ -311,21 +317,21 @@ Caution: body shall not increase stack size!"
     (setq output-and-stack (add-to-output output-and-stack "a="))
     ;; a= consumes both operands and pushes the test result;
     ;; Z[ then consumes the test result — clean up our internal stack tracking
-    (pop-and-check-from-stack (cdr output-and-stack) "if-=")
-    (pop-and-check-from-stack (cdr output-and-stack) "if-=")
+    (pop-and-check-from-stack-of output-and-stack "if-=")
+    (pop-and-check-from-stack-of output-and-stack "if-=")
     ;; Emit the conditional body: Z[ <then> Z: <else> Z]
     (setq output-and-stack (add-to-output output-and-stack "Z["))
     (setq output-and-stack (append-to-output output-and-stack then-body-output))
     ;; Update final stack to account for the net stack growth of the branches
-    (setq final-stack (cdr output-and-stack))
+    (setq final-stack (stack-of output-and-stack))
     (dotimes (i branch-stack-delta)
       (push 'NIL final-stack))
     (setq output-and-stack (add-to-output output-and-stack "Z:"))
     (setq output-and-stack (append-to-output output-and-stack else-body-output))
     (setq output-and-stack (add-to-output output-and-stack "Z]"))
-    (setq final-output (car output-and-stack))
+    (setq final-output (output-of output-and-stack))
 
-    (cons final-output final-stack)))
+    (build-output-and-stack-from final-output final-stack)))
 
 (defun process-if (output-and-stack terms)
   "Convert a '(if (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -385,12 +391,12 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
         (process-atom-or-sexp output-and-stack term))
 
   ;; (2) Apply the operation:
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
+  (let ((output (output-of output-and-stack))
+        (stack (stack-of output-and-stack)))
     (check-stack-length stack 1 operation-name)
     (pop-and-check-from-stack stack operation-name)
 
-    (cons
+    (build-output-and-stack-from
      (append (reverse calc-instructions-list) output)
      (cons 'NIL stack))))
 
@@ -421,15 +427,15 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
             (process-atom-or-sexp output-and-stack term)))
 
     ;; (2) Apply operation:
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
+    (let ((output (output-of output-and-stack))
+          (stack (stack-of output-and-stack)))
       (check-stack-length stack 2 operation-name)
       (pop-and-check-from-stack stack operation-name)
       (pop-and-check-from-stack stack operation-name)
       (setq stack (cons 'NIL stack))
       (setq output (append (reverse calc-instructions-list) output))
 
-      (cons output stack))))
+      (build-output-and-stack-from output stack))))
 
 (defun process-mod (output-and-stack terms)
   "Convert a 'mod' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -467,8 +473,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
             (process-atom-or-sexp output-and-stack term)))
 
     ;; (2) Apply the operation once or more:
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
+    (let ((output (output-of output-and-stack))
+          (stack (stack-of output-and-stack)))
       (dotimes (i (- nb-of-terms 1))
         (check-stack-length stack 2 operation-name)
         (pop-and-check-from-stack stack operation-name)
@@ -476,7 +482,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
         (setq stack (cons 'NIL stack))
         (setq output (append calc-instructions-list output)))
 
-      (cons output stack))))
+      (build-output-and-stack-from output stack))))
 
 (defun process-plus (output-and-stack terms)
   "Convert a '+' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -505,8 +511,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (setq output-and-stack
             (process-atom-or-sexp output-and-stack term)))
 
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
+    (let ((output (output-of output-and-stack))
+          (stack (stack-of output-and-stack)))
 
       ;; (2) Apply '+' once or more:
       (dotimes (i (- nb-of-terms 2))
@@ -523,7 +529,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (setq stack (cons 'NIL stack))
       (setq output (cons "-" output))
 
-      (cons output stack))))
+      (build-output-and-stack-from output stack))))
 
 (defun process-divide (output-and-stack terms)
   "Convert a '/' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -544,8 +550,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (setq output-and-stack
             (process-atom-or-sexp output-and-stack term)))
 
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
+    (let ((output (output-of output-and-stack))
+          (stack (stack-of output-and-stack)))
 
       ;; (2) Apply '*' once or more:
       (dotimes (i (- nb-of-terms 2))
@@ -562,7 +568,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (setq stack (cons 'NIL stack))
       (setq output (cons "/" output))
 
-      (cons output stack))))
+      (build-output-and-stack-from output stack))))
 
 (defun process-sexp (output-and-stack sexp)
   "Convert a sexp SEXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -611,13 +617,11 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
   "Convert a positive number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   ;; Simply emits the number literal and pushes an anonymous NIL entry onto the stack.
   ;; Example: 42 → output gets "42", stack gets a new NIL on top.
-  (let* ((output (car output-and-stack))
-         (stack (cdr output-and-stack)))
-    (cons
-     ;; new output:
-     (cons number output)
-     ;; new stack:
-     (cons 'NIL stack))))
+  (build-output-and-stack-from
+   ;; new output:
+   (cons number (output-of output-and-stack))
+   ;; new stack:
+   (cons 'NIL (stack-of output-and-stack))))
 
 (defun process-number (output-and-stack number)
   "Convert a number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -636,8 +640,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
   ;; C-u N C-j = copy N-th element.
   ;; Example: stack is [NIL, x, y] and we reference x (position 1, 1-indexed = 2):
   ;;   → emits "C-j" to copy the 2nd stack element to the top.
-  (let* ((output (car output-and-stack))
-         (stack (cdr output-and-stack))
+  (let* ((output (output-of output-and-stack))
+         (stack (stack-of output-and-stack))
          (place-of-symbol-in-stack (position symbol stack :test #'equal)))
 
     (when (null place-of-symbol-in-stack)
@@ -645,7 +649,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
 
     (incf place-of-symbol-in-stack)
 
-    (cons
+    (build-output-and-stack-from
      ;; new output:
      (append (cond ((= 1 place-of-symbol-in-stack)
                     (list "RET"))
@@ -665,6 +669,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
         ((listp atom-or-sexp)
          (process-sexp output-and-stack atom-or-sexp))
         (t (error "Neither number, symbol nor list: ~a" atom-or-sexp))))
+
 
 ;;; ============
 ;;; === MAIN ===
@@ -689,7 +694,7 @@ For instance: (3 4) --> '3 SPC 4'
              (and (equal "C-u" elt) (numberp last-elt))
              (and (numberp elt) (equal "n" last-elt) (not (equal "f" last-last-elt)))
              (and (equal "M-DEL" elt) (numberp last-elt) (not (equal "C-u" last-last-elt))))
-          (push "SPC" sexp-output))         ; when
+          (push "SPC" sexp-output))     ; when
         (push elt sexp-output)))
     (let ((string-output (format nil "~a" (car sexp-output))))
       (loop for elt in (cdr sexp-output)
@@ -698,12 +703,12 @@ For instance: (3 4) --> '3 SPC 4'
 
 (defun convert (code)
   "Convert CODE."
-  (let* ((initial-void-output-and-stack (cons nil nil))
+  (let* ((initial-void-output-and-stack (build-output-and-stack-from nil nil))
          (final-output-and-stack (process-atom-or-sexp initial-void-output-and-stack code))
          (clean-output (add-spaces (reverse (car final-output-and-stack)))))
     (format t "~%")
     (format t "code = ~a~%" code)
-    (format t "final stack (newest first) = ~a~%" (cdr final-output-and-stack))
+    (format t "final stack (newest first) = ~a~%" (stack-of final-output-and-stack))
     (format t "output = ~a~%" clean-output)))
 
 ;;; end
