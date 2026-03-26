@@ -13,6 +13,23 @@
 
   ;; 233168
 
+  ;; PE 2 :
+
+  (convert
+   '(let ((n 4000000)
+          (f1 0)
+          (f2 1)
+          (tmp 0)
+          (sum 0))
+     (while (<= f2 n)
+       (when (= 0 (mod f2 2)) (incf sum f2))
+       (setq tmp f1
+             f1 f2
+             f2 (+ tmp f2)))
+     sum))
+
+  ;; 4613732
+
   ;; PE 5
 
   (convert

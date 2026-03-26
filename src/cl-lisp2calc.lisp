@@ -141,7 +141,7 @@ Wrapper around pop-and-check-from-stack for use directly on an output-and-stack 
       (build-output-and-stack-from output stack))))
 
 (defun process-setq (output-and-stack symbol value-exp)
-  "Convert a 'setq' with terms SYMBOL and VALUE-EXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  "Convert a 'setq' with terms SYMBOL and VALUE-EXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack. Accept also multiple assignments."
   ;; Example: (let ((x 3)) (setq x 7) x)
   ;;   After let pushes 3, stack is [x=3]. Then (setq x 7):
   ;;   - Push 7 → stack: [NIL=7, x=3]  (x is at position 1)
@@ -608,7 +608,12 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
           ((equal 'decf operator)
            (process-decf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
           ((equal 'setq operator)
-           (process-setq output-and-stack (car (cdr sexp)) (cadr (cdr sexp))))
+           (let ((args (cdr sexp)))
+             (loop while args do
+               (setq output-and-stack
+                     (process-setq output-and-stack (car args) (cadr args)))
+               (setq args (cddr args)))
+             output-and-stack))
           ((equal 'dotimes operator)
            (process-dotimes output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))

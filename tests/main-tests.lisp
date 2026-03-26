@@ -146,6 +146,10 @@
   (parachute:is string= "5 SPC RET 1 - M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 5)) (decf x) x))))
 
+(parachute:define-test test-setq-multiple
+  (parachute:is string= "1 SPC 2 SPC 10 SPC C-u 3 M-DEL TAB 20 SPC M-DEL C-j C-j + M-DEL M-DEL"
+                (extract-calc-output '(let ((x 1) (y 2)) (setq x 10 y 20) (+ x y)))))
+
 ;;; =========================
 ;;; === E. CONTROL FLOW ===
 ;;; =========================
