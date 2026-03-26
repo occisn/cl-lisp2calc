@@ -2,9 +2,9 @@
 
 (declaim (optimize (speed 0) (debug 3) (safety 3)))
 
-;;; ====================
-;;; === BASIC MACROS ===
-;;; ====================
+;;; ===========================
+;;; === ADDITIONAL COMMANDS ===
+;;; ===========================
 
 (defmacro while (condition &body body)
   `(loop while ,condition
@@ -50,23 +50,32 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
 ;;; === BASIC OPERATIONS ON OUTPUT-AND-STACK ===
 ;;; ============================================
 
+(defun output-of (output-and-stack)
+  "Extract output from OUTPUT-AND-STACK."
+  (car output-and-stack))
+
+(defun stack-of (output-and-stack)
+  "Extract stack from OUTPUT-AND-STACK."
+  (cdr output-and-stack))
+
+(defun build-output-and-stack-from (output stack)
+  "Build output-and-stack from OUTPUT and STACK"
+  (cons output stack))
+
 (defun add-to-output (output-and-stack elt)
   "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (cons (cons elt output) stack)))
+  (build-output-and-stack-from (cons elt (output-of output-and-stack))
+                               (stack-of output-and-stack)))
 
 (defun append-to-output (output-and-stack lst)
-  "Add ELT to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (cons (append lst output) stack)))
+  "Append LST to the output part of OUTPUT-AND-STACK, and return the new output-and-stack."
+  (build-output-and-stack-from (append lst (output-of output-and-stack))
+                               (stack-of output-and-stack)))
 
 (defun delete-newest-element-on-stack (output-and-stack)
   "Delete newest element on stack of OUTPUT-AND-STACK (but keep output unchanged), and return the new output-and-stack."
-  (let ((output (car output-and-stack))
-        (stack (cdr output-and-stack)))
-    (cons output (cdr stack))))
+  (build-output-and-stack-from (output-of output-and-stack)
+                               (cdr (stack-of output-and-stack))))
 
 
 ;;; =============================
@@ -76,35 +85,45 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
 (defun process-let (output-and-stack terms)
   "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
 
+  ;; Example: (let ((x 3) (y 4)) (+ x y))
+  ;;   (1) Push 3 → stack: [x=3]; push 4 → stack: [y=4, x=3]
+  ;;   (2) Body (+ x y): C-j (copy x) + RET (copy y) + "+" → result on top
+  ;;       stack: [NIL, y=4, x=3]
+  ;;   (3) Clean up y (pos 1 → M-DEL), then x (pos 1 → M-DEL)
+  ;;   Output: "3 SPC 4 C-j RET + M-DEL M-DEL"
+
   (unless (>= (length terms) 2)
     (error "Not enough terms for a 'let' within ~a" terms))
   (let ((bindings (car terms))
         (body (cdr terms)))
 
-    ;; (1) Process bindings:
+    ;; (1) Process bindings: evaluate each binding's value expression, then
+    ;; replace the anonymous NIL marker on top of the stack with the variable name.
+    ;; This allows later references to find the variable by name via POSITION.
     (dolist (binding bindings)
       (let* ((symbol0 (car binding))
              (value-exp (cadr binding))
-             (output-and-stack2 (process-atom-or-sexp output-and-stack value-exp))
-             (output2 (car output-and-stack2))
-             (stack2 (cdr output-and-stack2))
-             (stack3 (cons symbol0 (cdr stack2))))
-        (setq output-and-stack (cons output2 stack3)))) ; dolist
+             (output-and-stack2 (process-atom-or-sexp output-and-stack value-exp)))
+        (setq output-and-stack
+              (build-output-and-stack-from (output-of output-and-stack2)
+                                           (cons symbol0 (cdr (stack-of output-and-stack2)))))))
 
-    ;; (2) Process body:
+    ;; (2) Process body (wrapped in progn to handle multiple body forms):
     (setq output-and-stack
           (process-sexp output-and-stack (cons 'progn body)))
 
-    ;; (3) Delete bindings from stack:
-    (let ((output (car output-and-stack))
-          (stack (cdr output-and-stack)))
+    ;; (3) Clean up: delete each binding from the Calc stack in reverse order.
+    ;; Reverse order ensures stack positions remain valid as we delete from top.
+    ;; DEL = delete top element, M-DEL = delete 2nd element,
+    ;; C-u N M-DEL = delete N-th element (1-indexed in Calc).
+    (let ((output (output-of output-and-stack))
+          (stack (stack-of output-and-stack)))
       (dolist (binding (reverse bindings))
         (let* ((symbol0 (car binding))
                (place-of-symbol-in-stack
                  (position symbol0 stack)))
           (when (null place-of-symbol-in-stack)
             (error "(let) Variable ~a supposed to be deleted not found in stack" symbol0))
-          ;; Add relevant output, for instance C-u 5 M-DEL:
           (setq output (append
                         (cond ((= 0 place-of-symbol-in-stack)
                                (list "DEL"))
@@ -113,10 +132,21 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
                               (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL"))))
                         output))
           (setq stack (delete-nth place-of-symbol-in-stack stack))))
-      (cons output stack))))
+      (build-output-and-stack-from output stack))))
 
 (defun process-setq (output-and-stack symbol value-exp)
   "Convert a 'setq' with terms SYMBOL and VALUE-EXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Example: (let ((x 3)) (setq x 7) x)
+  ;;   After let pushes 3, stack is [x=3]. Then (setq x 7):
+  ;;   - Push 7 → stack: [NIL=7, x=3]  (x is at position 1)
+  ;;   - instrA: M-DEL (delete old x at position 1)  → stack: [NIL=7]
+  ;;   - instrB: nil (position was 1, new value is already in place)
+  ;;   Output for setq: "7 M-DEL"
+  ;;
+  ;; Strategy: evaluate the new value (pushes result on top of stack), then:
+  ;;   instrA: delete the old value at the variable's position (M-DEL / C-u N M-DEL)
+  ;;   instrB: move the new value (currently on top) down to where the variable was (TAB / C-u N TAB)
+  ;; After instrA, the variable's position shifts by -1 since the new value is above it.
   (let* ((output-and-stack2 (process-atom-or-sexp output-and-stack value-exp))
          (output2 (car output-and-stack2))
          (stack2 (cdr output-and-stack2))
@@ -125,11 +155,13 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
       (error "(setq) Variable ~a not found in stack" symbol))
     (when (= 0 place-of-symbol-in-stack)
       (error "(setq) Variable ~a found in stack in position 0" symbol))
-    ;; 4: C-u 4 M-DEL C-u 3 TAB
-    (let* ((instrA (cond ;; (= 0 place-of-symbol-in-stack) is not possible
+    (let* (;; instrA: delete the old variable value from the stack
+           (instrA (cond ;; position 0 is the new value itself, so never happens
                      ((= 1 place-of-symbol-in-stack)
                       (list "M-DEL"))
                      (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL")))))
+           ;; instrB: move the new value (now on top) down to the variable's slot
+           ;; When position=1, the new value is already in the right place (no move needed)
            (instrB (cond ((= 1 place-of-symbol-in-stack)
                       nil)
                      ((= 2 place-of-symbol-in-stack)
@@ -139,20 +171,25 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
                      instrB
                      instrA
                      output2)))
+      ;; Remove the anonymous top-of-stack entry (the evaluated new value)
       (pop-and-check-from-stack stack2 "setq")
 
       (cons output3 stack2))))
 
 (defun process-incf (output-and-stack symbol)
   "Convert a 'incf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Desugared: (incf x) → (setq x (+ x 1))
   (process-atom-or-sexp output-and-stack `(setq ,symbol (+ ,symbol 1))))
 
 (defun process-decf (output-and-stack symbol)
   "Convert a 'decf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Desugared: (decf x) → (setq x (- x 1))
   (process-atom-or-sexp output-and-stack `(setq ,symbol (- ,symbol 1))))
 
 (defun process-progn (output-and-stack terms)
   "Convert a 'progn' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Example: (progn (+ 1 2) (+ 3 4)) → processes each form sequentially,
+  ;; threading the output-and-stack through. Final result is the last form's value.
   (dolist (term terms)
     (setq output-and-stack
           (process-atom-or-sexp output-and-stack term)))
@@ -163,29 +200,47 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
 
 Caution: body shall not increase stack size!"
 
+  ;; Example: (let ((i 0)) (while (<= i 5) (incf i)))
+  ;;   Produces: Z{ <push i> <push 5> a> Z/ <body: incf i> Z}
+  ;;   i.e. "Z{ RET SPC 5 a> Z/ RET SPC 1 + M-DEL Z}"
+  ;;   Loop runs while i <= 5; a> tests i > 5, Z/ breaks when that's nonzero.
+  ;;
+  ;; Calc loop structure:  Z{ <condition> Z/ <body> Z}
+  ;;   Z{ = start loop, Z} = end loop, Z/ = break if top-of-stack is nonzero
+  ;; Condition: push term1 and term2, then a> (greater-than test) gives nonzero to break when term1 > term2.
+
   (let* ((initial-output (car output-and-stack))
          (initial-stack (cdr output-and-stack))
          (body (cons 'progn body))
+         ;; Pre-compute the body's Calc instructions by running it in isolation
+         ;; on the current state, then extracting only the new instructions
          (body-output-in-context (car (process-atom-or-sexp output-and-stack body)))
          (body-output (subseq body-output-in-context 0 (- (length body-output-in-context) (length initial-output))))
          (final-output nil))
 
-    ;; (1) Express final output:
+    ;; Build the loop: Z{ → condition → Z/ (break if true) → body → Z}
     (setq output-and-stack (add-to-output output-and-stack "Z{"))
     (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
     (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+    ;; Clean up the two condition values from our internal stack tracking
     (setq output-and-stack (delete-newest-element-on-stack output-and-stack))
     (setq output-and-stack (delete-newest-element-on-stack output-and-stack))
+    ;; a> = test if term1 > term2 (nonzero = exit loop via Z/)
     (setq output-and-stack (add-to-output output-and-stack "a>"))
     (setq output-and-stack (add-to-output output-and-stack "Z/"))
     (setq output-and-stack (append-to-output output-and-stack body-output))
     (setq output-and-stack (add-to-output output-and-stack "Z}"))
     (setq final-output (car output-and-stack))
 
+    ;; Restore initial stack: the loop doesn't change net stack size
     (cons final-output initial-stack)))
 
 (defun process-while (output-and-stack terms)
   "Convert a '(while (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; All comparison variants are reduced to the <= primitive (process-while-<=):
+  ;;   (< a b)  → (<= a (- b 1))    [integers only]
+  ;;   (>= a b) → (<= b a)           [swap operands]
+  ;;   (> a b)  → (<= b (- a 1))     [swap + adjust]
   (let ((comparison-sexp (car terms))
         (body (cdr terms)))
     (unless (= 3 (length comparison-sexp))
@@ -206,12 +261,29 @@ Caution: body shall not increase stack size!"
 (defun process-if-= (output-and-stack term1 term2 then-body else-body)
   "Convert a (if (= term1 term2) then-body else-body)' with terms TERM1, TERM2, THEN-BODY and ELSE-BODY, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
 
+  ;; Example: (if (= x 0) 42 99)
+  ;;   Produces: <push x> <push 0> a= Z[ 42 Z: 99 Z]
+  ;;   i.e. "RET SPC 0 a= Z[ 42 Z: 99 Z]"
+  ;;   If x=0, pushes 42; otherwise pushes 99.
+  ;;
+  ;; Example with stack balancing (when): (when (= x 0) 42) → else-body is (progn)
+  ;;   Then-branch pushes 1 value, else-branch pushes 0 → pad else with a dummy "0"
+  ;;   so both branches have the same stack effect.
+  ;;
+  ;; Calc conditional structure:  a= Z[ <then> Z: <else> Z]
+  ;;   a= = equality test (pushes 1 or 0), Z[ = start if (consumes test result),
+  ;;   Z: = else separator, Z] = end if.
+  ;; Both branches must leave the stack at the same height, so we pad the shorter
+  ;; branch with dummy 0 pushes if needed.
+
   (when (null else-body)
     (setq else-body '(progn)))
 
   (let* ((initial-output (car output-and-stack))
          (initial-stack (cdr output-and-stack))
-         ;; Pre-compute both branches (output and stack)
+         ;; Pre-compute both branches to extract their Calc instructions and stack effects.
+         ;; Each branch is processed against the current state; we then strip the
+         ;; pre-existing output to isolate only the branch's contribution.
          (then-result (process-atom-or-sexp output-and-stack then-body))
          (then-body-output-in-context (car then-result))
          (then-body-output (subseq then-body-output-in-context 0 (- (length then-body-output-in-context) (length initial-output))))
@@ -224,7 +296,8 @@ Caution: body shall not increase stack size!"
          (final-output nil)
          (final-stack nil))
 
-    ;; Balance branches if they have different stack effects (e.g., when's empty else-branch)
+    ;; Balance branches: pad the shorter branch with dummy 0 pushes so both
+    ;; branches produce the same net stack growth (required by Calc)
     (when (< else-stack-delta then-stack-delta)
       (dotimes (i (- then-stack-delta else-stack-delta))
         (push 0 else-body-output)))
@@ -232,14 +305,18 @@ Caution: body shall not increase stack size!"
       (dotimes (i (- else-stack-delta then-stack-delta))
         (push 0 then-body-output)))
 
+    ;; Emit: push term1, push term2, then a= tests equality
     (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
     (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
     (setq output-and-stack (add-to-output output-and-stack "a="))
+    ;; a= consumes both operands and pushes the test result;
+    ;; Z[ then consumes the test result — clean up our internal stack tracking
     (pop-and-check-from-stack (cdr output-and-stack) "if-=")
     (pop-and-check-from-stack (cdr output-and-stack) "if-=")
+    ;; Emit the conditional body: Z[ <then> Z: <else> Z]
     (setq output-and-stack (add-to-output output-and-stack "Z["))
     (setq output-and-stack (append-to-output output-and-stack then-body-output))
-    ;; Track the stack effect of the branches
+    ;; Update final stack to account for the net stack growth of the branches
     (setq final-stack (cdr output-and-stack))
     (dotimes (i branch-stack-delta)
       (push 'NIL final-stack))
@@ -266,6 +343,8 @@ Caution: body shall not increase stack size!"
 
 (defun process-when (output-and-stack terms)
   "Convert a '(when (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Desugared into if: (when (= x 0) body) → (if (= x 0) (progn body) (progn))
+  ;; The empty else-branch (progn) gets padded with dummy values by process-if-=.
   (let ((control-sexp (car terms))
         (body (cdr terms)))
     (unless (= 3 (length control-sexp))
@@ -279,6 +358,8 @@ Caution: body shall not increase stack size!"
 
 (defun process-dotimes (output-and-stack terms)
   "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Desugared into: (let ((i 0)) (while (< i max) body... (incf i)))
+  ;; This reuses the existing let/while/incf machinery.
   (let ((iteration-sexp (car terms))
         (body (cdr terms)))
     (unless (= 2 (length iteration-sexp))
@@ -295,6 +376,9 @@ Caution: body shall not increase stack size!"
   "Convert an unary operation (negate, inverse...) with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 OPERATION-NAME contains the name of the operation (for error message).
 CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
+
+  ;; Example: (- 5) → push 5, then negate ("n")  → output: "5 n"
+  ;; Example: (/ 3) → push 3, then inverse ("&") → output: "3 &"
 
   ;; (1) Add term to the stack:
   (setq output-and-stack
@@ -322,6 +406,11 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
   "Convert a binary operation (min, max) with a list of two terms TERMS, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 OPERATION-NAME contains the name of the operation (for error message).
 CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
+
+  ;; Example: (min 3 7) → push 3, push 7, then "f n" (Calc's floor/min) → output: "3 SPC 7 f n"
+  ;; Example: (max 3 7) → push 3, push 7, then "f x" (Calc's floor/max) → output: "3 SPC 7 f x"
+  ;; Example: (mod 10 3) → push 10, push 3, then "%" → output: "10 SPC 3 %"
+
   (let ((nb-of-terms (length terms)))
     (unless (= nb-of-terms 2)
       (error "Not the right numbers of terms to apply '~a' in ~a" operation-name terms))
@@ -362,6 +451,12 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
   "Convert an operation with multiple arguments (+, *) with a list of terms TERMS, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 OPERATION-NAME contains the name of the operation (for error message).
 CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
+
+  ;; Example: (+ 1 2 3) → push 1, push 2, push 3, then "+" twice
+  ;;   output: "1 SPC 2 SPC 3 + +"  (first + adds 2+3, second + adds 1+result)
+  ;; Example: (* 2 3 4) → push 2, push 3, push 4, then "*" twice
+  ;;   output: "2 SPC 3 SPC 4 * *"
+
   (let ((nb-of-terms (length terms)))
     (when (< nb-of-terms 2)
       (error "Not enough terms to apply '~a' in terms ~a" operation-name terms))
@@ -393,6 +488,14 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
 
 (defun process-minus (output-and-stack terms)
   "Convert a '-' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+
+  ;; CL semantics: (- a b c) = a - b - c = a - (b + c)
+  ;; Strategy: push all terms, then apply "+" to combine all but the first (the subtrahends),
+  ;; then apply "-" once between the first term and the combined subtrahend.
+  ;; Example: (- 10 3 2) → push 10, push 3, push 2, then "+" (3+2=5), then "-" (10-5=5)
+  ;;   output: "10 SPC 3 SPC 2 + -"
+  ;; Example: (- 10 3) → push 10, push 3, then "-" → output: "10 SPC 3 -"
+
   (let ((nb-of-terms (length terms)))
     (when (< nb-of-terms 2)
       (error "Not enough terms to apply - in terms ~a" terms))
@@ -424,6 +527,14 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
 
 (defun process-divide (output-and-stack terms)
   "Convert a '/' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+
+  ;; CL semantics: (/ a b c) = a / b / c = a / (b * c)
+  ;; Strategy: push all terms, then apply "*" to combine all but the first (the divisors),
+  ;; then apply "/" once between the first term and the combined divisor.
+  ;; Example: (/ 60 3 4) → push 60, push 3, push 4, then "*" (3*4=12), then "/" (60/12=5)
+  ;;   output: "60 SPC 3 SPC 4 * /"
+  ;; Example: (/ 10 2) → push 10, push 2, then "/" → output: "10 SPC 2 /"
+
   (let ((nb-of-terms (length terms)))
     (when (< nb-of-terms 2)
       (error "Not enough terms to apply / in terms ~a" terms))
@@ -498,6 +609,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
 
 (defun process-positive-number (output-and-stack number)
   "Convert a positive number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Simply emits the number literal and pushes an anonymous NIL entry onto the stack.
+  ;; Example: 42 → output gets "42", stack gets a new NIL on top.
   (let* ((output (car output-and-stack))
          (stack (cdr output-and-stack)))
     (cons
@@ -508,6 +621,9 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
 
 (defun process-number (output-and-stack number)
   "Convert a number NUMBER taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Positive/zero numbers are emitted directly. Negative numbers are desugared
+  ;; into (- abs-value) to use the unary minus machinery.
+  ;; Example: -5 → (- 5) → output: "5 n"
   (if (>= number 0)
       (process-positive-number output-and-stack number)
       (let ((number2 (- number)))
@@ -515,6 +631,11 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
 
 (defun process-variable (output-and-stack symbol)
   "Convert a variable SYMBOL (for intance I) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Copies the variable's value from its position in the Calc stack to the top.
+  ;; In Calc: RET = duplicate top (pos 1), C-j = copy 2nd element (pos 2),
+  ;; C-u N C-j = copy N-th element.
+  ;; Example: stack is [NIL, x, y] and we reference x (position 1, 1-indexed = 2):
+  ;;   → emits "C-j" to copy the 2nd stack element to the top.
   (let* ((output (car output-and-stack))
          (stack (cdr output-and-stack))
          (place-of-symbol-in-stack (position symbol stack :test #'equal)))

@@ -195,18 +195,18 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
 
 (parachute:define-test test-emacs-while-<=
   (%check-emacs-result
-   `(let ((x 0)) (lisp2calc::while (<= x 3) (incf x)) x)))
+   `(let ((x 0)) (l2c::while (<= x 3) (incf x)) x)))
 
 (parachute:define-test test-emacs-while-<
   (%check-emacs-result
-   `(let ((x 0)) (lisp2calc::while (< x 4) (incf x)) x)))
+   `(let ((x 0)) (l2c::while (< x 4) (incf x)) x)))
 
 (parachute:define-test test-emacs-while->=
   (%check-emacs-result
-   `(let ((x 5)) (lisp2calc::while (>= x 2) (decf x)) x)))
+   `(let ((x 5)) (l2c::while (>= x 2) (decf x)) x)))
 
 (parachute:define-test test-emacs-while->
   (%check-emacs-result
-   `(let ((x 5)) (lisp2calc::while (> x 1) (decf x)) x)))
+   `(let ((x 5)) (l2c::while (> x 1) (decf x)) x)))
 
 ;;; end
