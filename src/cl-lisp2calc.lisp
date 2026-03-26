@@ -6,9 +6,9 @@
 ;;; === BASIC MACROS ===
 ;;; ====================
 
-;; (defmacro while (condition &body body)
-;;   `(loop while ,condition
-;;          do (progn ,@body)))
+(defmacro while (condition &body body)
+  `(loop while ,condition
+         do (progn ,@body)))
 
 ;;; =================================
 ;;; === BASIC OPERATIONS ON LISTS ===
