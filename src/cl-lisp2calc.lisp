@@ -182,15 +182,15 @@ Wrapper around pop-and-check-from-stack for use directly on an output-and-stack 
 
       (build-output-and-stack-from output3 stack2))))
 
-(defun process-incf (output-and-stack symbol)
-  "Convert a 'incf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  ;; Desugared: (incf x) → (setq x (+ x 1))
-  (process-atom-or-sexp output-and-stack `(setq ,symbol (+ ,symbol 1))))
+(defun process-incf (output-and-stack symbol &optional (delta 1))
+  "Convert a 'incf' with symbol SYMBOL and optional DELTA taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Desugared: (incf x) → (setq x (+ x 1)), (incf x d) → (setq x (+ x d))
+  (process-atom-or-sexp output-and-stack `(setq ,symbol (+ ,symbol ,delta))))
 
-(defun process-decf (output-and-stack symbol)
-  "Convert a 'decf' with symbol SYMBOL taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  ;; Desugared: (decf x) → (setq x (- x 1))
-  (process-atom-or-sexp output-and-stack `(setq ,symbol (- ,symbol 1))))
+(defun process-decf (output-and-stack symbol &optional (delta 1))
+  "Convert a 'decf' with symbol SYMBOL and optional DELTA taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  ;; Desugared: (decf x) → (setq x (- x 1)), (decf x d) → (setq x (- x d))
+  (process-atom-or-sexp output-and-stack `(setq ,symbol (- ,symbol ,delta))))
 
 (defun process-progn (output-and-stack terms)
   "Convert a 'progn' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -604,9 +604,9 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
           ((equal 'if operator)
            (process-if output-and-stack (cdr sexp)))
           ((equal 'incf operator)
-           (process-incf output-and-stack (car (cdr sexp))))
+           (process-incf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
           ((equal 'decf operator)
-           (process-decf output-and-stack (car (cdr sexp))))
+           (process-decf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
           ((equal 'setq operator)
            (process-setq output-and-stack (car (cdr sexp)) (cadr (cdr sexp))))
           ((equal 'dotimes operator)

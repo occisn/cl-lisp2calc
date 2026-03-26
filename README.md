@@ -2,6 +2,12 @@
 
 Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) into stack-based GNU Emacs Calc.
 
+- [Explanations](#explanations)
+- [Testing](#testing)
+- [Applications](#applications)
+
+## Explanations
+
 Calc is a stack-based calculator included in GNU Emacs. It can be used as a standard calculator similar to HP28/48 calculators, or for advanced mathematics.
 
 Its [manual](https://www.gnu.org/software/emacs/manual/html_mono/calc.html) is available on-line, starting with a [Getting Started](https://www.gnu.org/software/emacs/manual/html_mono/calc.html#Getting-Started) section encompassing a [demonstration](https://www.gnu.org/software/emacs/manual/html_mono/calc.html#Demonstration-of-Calc).
@@ -56,7 +62,9 @@ Recognized Common Lisp macros or functions:
      - `let` or `let*`  
      - `(setq n (+ m 3))` with no use of the value, and only one assignment  
      - `(incf i)`  
+     - `(incf i k)`  
      - `(decf i)`  
+     - `(decf i k)`  
      - `(if (= ...) ...)`  
      
 Recognized operators not available in Common Lisp:
@@ -106,5 +114,27 @@ Code is interpreted, and output-and-stack = (output . stack) is updated at each 
        for instance: ((4 . NIL) (5. I))
        
 Any comment? Open an [issue](https://github.com/occisn/cl-lisp2calc/issues), or start a discussion [here](https://github.com/occisn/cl-lisp2calc/discussions) or [at profile level](https://github.com/occisn/occisn/discussions).
+
+## Applications
+
+### Project Euler 1
+
+_If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23. Find the sum of all the multiples of 3 or 5 below 1000.  
+[(source)](https://projecteuler.net/problem=1)
+
+Lisp implementation:
+``` lisp
+(let ((n 1000)
+      (sum 0))
+  (dotimes (i n)
+    (when (= 0 (* (mod i 3) (mod i 5)))
+      (incf sum i)))
+  sum)
+```
+
+Calc:
+```
+1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % C-u 3 C-j 5 % * a= Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+```
 
 (end of README)

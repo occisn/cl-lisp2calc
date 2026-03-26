@@ -209,4 +209,33 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
   (%check-emacs-result
    `(let ((x 5)) (l2c::while (> x 1) (decf x)) x)))
 
+;;; --- Applications ---
+
+(defun %check-emacs-result-against (code expected-string)
+  "Like %check-emacs-result, but also verify that both CL and Calc produce EXPECTED-STRING."
+  (if (not *run-emacs-tests*)
+      (parachute:skip "Emacs integration tests disabled (*run-emacs-tests* is NIL)")
+      (let* ((cl-result (%result-to-string (eval code)))
+             (result (extract-and-run code)))
+        (parachute:is string= expected-string cl-result
+                      "CL result mismatch for ~a: expected ~a, got ~a"
+                      code expected-string cl-result)
+        (parachute:is string= "ok" (getf result :status)
+                      "Status should be ok for ~a (error: ~a)" code (getf result :error))
+        (parachute:is = 1 (getf result :stack-depth)
+                      "Stack depth should be 1 for ~a" code)
+        (parachute:is string= expected-string (getf result :result)
+                      "Calc result mismatch for ~a: expected ~a, got ~a"
+                      code expected-string (getf result :result)))))
+
+(parachute:define-test test-emacs-euler-1
+  (%check-emacs-result-against
+   '(let ((n 1000)
+          (sum 0))
+      (dotimes (i n)
+        (when (= 0 (* (mod i 3) (mod i 5)))
+          (incf sum i)))
+      sum)
+   "233168"))
+
 ;;; end
