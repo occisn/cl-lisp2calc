@@ -5,7 +5,7 @@ Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) int
 Table of contents:  
 - [Explanations](#explanations)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [5](#project-euler-5), [6](#project-euler-6), [9](#project-euler-9)
 
 ## Explanations
 
@@ -160,6 +160,71 @@ Lisp implementation:
 Calc:
 ```
 4000000 SPC 0 SPC 1 SPC 0 SPC 0 Z{ C-u 3 C-j C-u 6 C-j a> Z/ 0 SPC C-u 4 C-j 2 % a= Z[ RET C-u 4 C-j + M-DEL Z: Z] C-u 4 C-j C-u 3 M-DEL TAB C-u 3 C-j C-u 5 M-DEL C-u 4 TAB C-j C-u 4 C-j + C-u 4 M-DEL C-u 3 TAB Z} RET M-DEL M-DEL M-DEL M-DEL M-DEL
+```
+
+### Project Euler 5
+
+_What is the smallest positive number that is evenly divisible by all of the numbers from 1 to 20?_ [(source)](https://projecteuler.net/problem=5)
+
+Lisp implementation:
+``` lisp
+(let ((n 20)
+      (res 1))
+  (dotimes (i n)
+    (setq res (lcm res (+ i 1))))
+  res)
+```
+
+Calc:
+```
+20 SPC 1 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ C-j C-j 1 + k l C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+```
+
+### Project Euler 6
+
+_Find the difference between the sum of the squares of the first one hundred natural numbers and the square of the sum._ [(source)](https://projecteuler.net/problem=6)
+
+Lisp implementation:
+``` lisp
+(let ((n 100) (res 0))
+  (dotimes (i (+ n 1))
+    (setq res (+ res i)))
+  (setq res (* res res))
+  (dotimes (i (+ n 1))
+    (setq res (- res (* i i))))
+  res)
+```
+
+Calc:
+```
+100 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 + 1 - a> Z/ C-j C-j + C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET C-j * M-DEL 0 Z{ RET C-u 4 C-j 1 + 1 - a> Z/ C-j C-j C-u 3 C-j * - C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+```
+
+### Project Euler 9
+
+_There exists exactly one Pythagorean triplet for which a + b + c = 1000. Find the product abc._ [(source)](https://projecteuler.net/problem=9)
+
+Lisp implementation:
+``` lisp
+(let ((n 1000)
+      (res -1))
+  (let ((c n))
+    (while (>= c 3)
+      (let* ((bmax (min (- c 1) (- n c 1)))
+             (bmin (max 2 (/ (- n c) 2)))
+             (b bmax))
+        (while (>= b bmin)
+          (let ((a (- n b c)))
+            (when (= (* c c) (+ (* a a) (* b b)))
+              (setq res (* a b c))))
+          (setq b (- b 1))))
+      (setq c (- c 1))))
+  res)
+```
+
+Calc:
+```
+1000 SPC 1 n C-j Z{ 3 C-j a> Z/ RET 1 - C-u 4 C-j C-u 3 C-j 1 + - f n 2 SPC C-u 5 C-j C-u 4 C-j - 2 / f x C-j Z{ C-j C-j a> Z/ C-u 6 C-j C-j C-u 6 C-j + - C-u 5 C-j C-u 6 C-j * C-j C-u 3 C-j * C-u 4 C-j C-u 5 C-j * + a= Z[ RET C-u 3 C-j C-u 7 C-j * * C-u 7 M-DEL C-u 6 TAB Z: Z] DEL RET 1 - M-DEL Z} DEL DEL DEL RET 1 - M-DEL Z} DEL RET M-DEL M-DEL
 ```
 
 (end of README)
