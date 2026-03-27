@@ -108,6 +108,8 @@ Wrapper around pop-and-check-from-stack for use directly on an output-and-stack 
 ;;; === OPERATIONS PROCESSING ===
 ;;; =============================
 
+;;; === Non-CL operators ===
+
 (defun process-prime-factorization (output-and-stack terms)
   "Convert a (prime-factorization n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 Emits Calc's 'k f' command."
@@ -121,6 +123,8 @@ Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extrac
   (unless (= 1 (length terms))
     (error "(last-element) requires exactly 1 argument, got: ~a" terms))
   (process-unary-operation output-and-stack (car terms) '("v" "v" "v" "r" 1) "last-element"))
+
+;;; === Variable binding & assignment ===
 
 (defun process-let (output-and-stack terms)
   "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -226,6 +230,8 @@ Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extrac
   ;; Desugared: (decf x) → (setq x (- x 1)), (decf x d) → (setq x (- x d))
   (process-atom-or-sexp output-and-stack `(setq ,symbol (- ,symbol ,delta))))
 
+;;; === Control flow ===
+
 (defun process-progn (output-and-stack terms)
   "Convert a 'progn' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   ;; Example: (progn (+ 1 2) (+ 3 4)) → processes each form sequentially,
@@ -297,6 +303,8 @@ Caution: body shall not increase stack size!"
             ((equal '> comparison-operator)
              (process-while-<= output-and-stack term2 `(- ,term1 1) body))
             (t (error "(while) Comparison operator not recognized: ~a" comparison-operator))))))
+
+;;; === Conditionals & boolean ===
 
 (defun process-if-= (output-and-stack term1 term2 then-body else-body)
   "Convert a (if (= term1 term2) then-body else-body)' with terms TERM1, TERM2, THEN-BODY and ELSE-BODY, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -524,6 +532,8 @@ Z[ enters then-branch when or=1 (truthy), else-branch when or=0 (falsy)."
                                  ,@body
                                  (incf ,symbol)))))))
 
+;;; === Arithmetic ===
+
 (defun process-unary-operation (output-and-stack term calc-instructions-list operation-name)
   "Convert an unary operation (negate, inverse...) with only one TERM, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 OPERATION-NAME contains the name of the operation (for error message).
@@ -715,6 +725,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
       (setq output (cons "/" output))
 
       (build-output-and-stack-from output stack))))
+
+;;; === Dispatch & atoms ===
 
 (defun process-sexp (output-and-stack sexp)
   "Convert a sexp SEXP taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
