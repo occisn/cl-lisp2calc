@@ -336,6 +336,38 @@ Caution: body shall not increase stack size!"
     ;; Restore initial stack: the loop doesn't change net stack size
     (build-output-and-stack-from final-output initial-stack)))
 
+(defun process-while-/= (output-and-stack term1 term2 body)
+  "Convert a (while (/= term1 term2) body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+
+Caution: body shall not increase stack size!
+
+Pattern: Z{ <term1> <term2> a= Z/ <body> Z}
+a= pushes 1 when equal (nonzero = break via Z/), so loop continues while /=."
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
+         (body (cons 'progn body))
+         ;; Pre-compute the body's Calc instructions
+         (body-output-in-context (output-of (process-atom-or-sexp output-and-stack body)))
+         (body-output (subseq body-output-in-context 0 (- (length body-output-in-context) (length initial-output))))
+         (final-output nil))
+
+    ;; Build the loop: Z{ → a= test → Z/ (break if equal) → body → Z}
+    (setq output-and-stack (add-to-output output-and-stack "Z{"))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+    ;; Clean up the two condition values from our internal stack tracking
+    (setq output-and-stack (delete-newest-element-on-stack output-and-stack))
+    (setq output-and-stack (delete-newest-element-on-stack output-and-stack))
+    ;; a= = test if term1 = term2 (nonzero = exit loop via Z/)
+    (setq output-and-stack (add-to-output output-and-stack "a="))
+    (setq output-and-stack (add-to-output output-and-stack "Z/"))
+    (setq output-and-stack (append-to-output output-and-stack body-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z}"))
+    (setq final-output (output-of output-and-stack))
+
+    ;; Restore initial stack: the loop doesn't change net stack size
+    (build-output-and-stack-from final-output initial-stack)))
+
 (defun process-while-and (output-and-stack and-args body)
   "Convert a (while (and (= a1 b1) (= a2 b2)) body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 
@@ -381,7 +413,9 @@ The and computation pushes 0 or 1. Then 0 a= inverts it: pushes 1 (break) when a
                (error "(while) Malformed comparison: ~a" comparison-sexp))
              (let ((term1 (cadr comparison-sexp))
                    (term2 (caddr comparison-sexp)))
-               (cond ((equal '<= comparison-operator)
+               (cond ((equal '/= comparison-operator)
+                      (process-while-/= output-and-stack term1 term2 body))
+                     ((equal '<= comparison-operator)
                       (process-while-<= output-and-stack term1 term2 body))
                      ((equal '< comparison-operator)
                       (process-while-<= output-and-stack term1 `(- ,term2 1) body))

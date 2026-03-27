@@ -74,7 +74,7 @@ Recognized Common Lisp macros or functions:
      - `(when (= ...) ...)` or `(when (or ...) ...)` or `(when (and ...) ...)`
 
 Recognized operators not available in Common Lisp (internal to `lisp2calc` package, use `l2c::` prefix):
-     - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>` or `(and (= ..) (= ..))`
+     - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>` `/=` or `(and (= ..) (= ..))`
      - `(prime-factorization n)` → Calc's `k f`
      - `(last-element lst)` = `(car (last lst))` → Calc's `v v v r 1`
 

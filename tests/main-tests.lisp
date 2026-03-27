@@ -201,6 +201,17 @@
                 (extract-calc-output
                  `(let ((x 5)) (lisp2calc::while (> x 1) (decf x)) x))))
 
+(parachute:define-test test-while-/=
+  ;; (while (/= x target) body): loop while x ≠ target
+  ;; x=1, target=5; increment x until x=5
+  (parachute:is string=
+                "1 SPC 5 Z{ C-j C-j a= Z/ C-j 1 + C-u 3 M-DEL TAB Z} C-j M-DEL M-DEL"
+                (extract-calc-output
+                 `(let* ((x 1) (target 5))
+                    (lisp2calc::while (/= x target)
+                      (incf x))
+                    x))))
+
 (parachute:define-test test-while-and
   ;; (while (and (= ...) (= ...)) body): loop while both conditions true
   ;; x=3,y=3; loop while x=3 AND y=3; body sets y=0 → exits after 1 iteration
