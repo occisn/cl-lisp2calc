@@ -2,13 +2,33 @@
 
 (declaim (optimize (speed 0) (debug 3) (safety 3)))
 
-;;; ===========================
-;;; === ADDITIONAL COMMANDS ===
-;;; ===========================
+;;; ===================================
+;;; === ADDITIONAL NON-CL OPERATORS ===
+;;; ===================================
 
 (defmacro while (condition &body body)
   `(loop while ,condition
          do (progn ,@body)))
+
+(defun prime-factorization (n)
+  "Return the prime factors of fixnum N as a flat list, with multiplicity.
+N is supposed to be an integer >= 2."
+  (declare (type fixnum n))
+  (let ((result '()))
+    (flet ((divide-out (factor)
+             (loop while (zerop (mod n factor))
+                   do (push factor result)
+                      (setq n (the fixnum (floor n factor))))))
+      (divide-out 2)
+      (loop for f of-type fixnum from 3 by 2
+            while (<= (the fixnum (* f f)) n)
+            do (divide-out f))
+      (when (> n 1) (push n result)))
+    (nreverse result)))
+
+(defun last-element (lst)
+  "Returns the last element of list LST."
+  (car (last lst)))
 
 ;;; =================================
 ;;; === BASIC OPERATIONS ON LISTS ===
@@ -734,6 +754,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-dotimes output-and-stack (cdr sexp)))
           ((equal 'prime-factorization operator)
            (process-prime-factorization output-and-stack (cdr sexp)))
+          ((equal 'last-element operator)
+           (process-last-element output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))
 
 (defun process-positive-number (output-and-stack number)
@@ -838,27 +860,18 @@ For instance: (3 4) --> '3 SPC 4'
 ;;; === ADDITIONAL COMMANDS ===
 ;;; ==============================
 
-(defun prime-factorization (n)
-  "Return the prime factors of fixnum N as a flat list, with multiplicity.
-N is supposed to be an integer >= 2."
-  (declare (type fixnum n))
-  (let ((result '()))
-    (flet ((divide-out (factor)
-             (loop while (zerop (mod n factor))
-                   do (push factor result)
-                      (setq n (the fixnum (floor n factor))))))
-      (divide-out 2)
-      (loop for f of-type fixnum from 3 by 2
-            while (<= (the fixnum (* f f)) n)
-            do (divide-out f))
-      (when (> n 1) (push n result)))
-    (nreverse result)))
-
 (defun process-prime-factorization (output-and-stack terms)
   "Convert a (prime-factorization n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 Emits Calc's 'k f' command."
   (unless (= 1 (length terms))
     (error "(prime-factorization) requires exactly 1 argument, got: ~a" terms))
   (process-unary-operation output-and-stack (car terms) '("k" "f") "prime-factorization"))
+
+(defun process-last-element (output-and-stack terms)
+  "Convert a (last-element lst) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extract first element)."
+  (unless (= 1 (length terms))
+    (error "(last-element) requires exactly 1 argument, got: ~a" terms))
+  (process-unary-operation output-and-stack (car terms) '("v" "v" "v" "r" 1) "last-element"))
 
 ;;; end

@@ -253,4 +253,12 @@
   (parachute:is string= "210 SPC RET k f M-DEL"
                 (extract-calc-output `(let ((n 210)) (lisp2calc::prime-factorization n)))))
 
+(parachute:define-test test-convert-last-element
+  ;; literal number
+  (parachute:is string= "12 v v v r 1"
+                (extract-calc-output `(lisp2calc::last-element 12)))
+  ;; composed with prime-factorization
+  (parachute:is string= "12 k f v v v r 1"
+                (extract-calc-output `(lisp2calc::last-element (lisp2calc::prime-factorization 12)))))
+
 ;;; end
