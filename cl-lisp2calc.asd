@@ -14,6 +14,5 @@
   :components ((:file "package")
                (:module "src"
                 :components
-                ((:file "cl-lisp2calc")
-                 (:file "examples"))))
+                ((:file "cl-lisp2calc"))))
   :in-order-to ((asdf:test-op (asdf:test-op :cl-lisp2calc-tests))))

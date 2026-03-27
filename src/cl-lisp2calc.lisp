@@ -108,6 +108,20 @@ Wrapper around pop-and-check-from-stack for use directly on an output-and-stack 
 ;;; === OPERATIONS PROCESSING ===
 ;;; =============================
 
+(defun process-prime-factorization (output-and-stack terms)
+  "Convert a (prime-factorization n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Emits Calc's 'k f' command."
+  (unless (= 1 (length terms))
+    (error "(prime-factorization) requires exactly 1 argument, got: ~a" terms))
+  (process-unary-operation output-and-stack (car terms) '("k" "f") "prime-factorization"))
+
+(defun process-last-element (output-and-stack terms)
+  "Convert a (last-element lst) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extract first element)."
+  (unless (= 1 (length terms))
+    (error "(last-element) requires exactly 1 argument, got: ~a" terms))
+  (process-unary-operation output-and-stack (car terms) '("v" "v" "v" "r" 1) "last-element"))
+
 (defun process-let (output-and-stack terms)
   "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
 
@@ -147,7 +161,7 @@ Wrapper around pop-and-check-from-stack for use directly on an output-and-stack 
       (dolist (binding (reverse bindings))
         (let* ((symbol0 (car binding))
                (place-of-symbol-in-stack
-                 (position symbol0 stack)))
+                (position symbol0 stack)))
           (when (null place-of-symbol-in-stack)
             (error "(let) Variable ~a supposed to be deleted not found in stack" symbol0))
           (setq output (append
@@ -853,25 +867,98 @@ For instance: (3 4) --> '3 SPC 4'
          (clean-output (add-spaces (reverse (car final-output-and-stack)))))
     (format t "~%")
     (format t "code = ~a~%" code)
-    (format t "final stack (newest first) = ~a~%" (stack-of final-output-and-stack))
-    (format t "output = ~a~%" clean-output)))
+    (format t "~%final stack (newest first) = ~a~%" (stack-of final-output-and-stack))
+    (format t "~%output = ~a~%" clean-output)))
 
-;;; ==============================
-;;; === ADDITIONAL COMMANDS ===
-;;; ==============================
+;;; ================
+;;; === EXAMPLES ===
+;;; ================
 
-(defun process-prime-factorization (output-and-stack terms)
-  "Convert a (prime-factorization n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
-Emits Calc's 'k f' command."
-  (unless (= 1 (length terms))
-    (error "(prime-factorization) requires exactly 1 argument, got: ~a" terms))
-  (process-unary-operation output-and-stack (car terms) '("k" "f") "prime-factorization"))
+(defun main ()
 
-(defun process-last-element (output-and-stack terms)
-  "Convert a (last-element lst) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
-Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extract first element)."
-  (unless (= 1 (length terms))
-    (error "(last-element) requires exactly 1 argument, got: ~a" terms))
-  (process-unary-operation output-and-stack (car terms) '("v" "v" "v" "r" 1) "last-element"))
+  (format t "~%Project Euler 1:~%----------------~%")
+
+  (convert
+   '(let ((n 1000)
+          (sum 0))
+     (dotimes (i n)
+       (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
+         (incf sum i)))
+     sum))
+  
+
+  ;; 233168
+
+  (format t "~%Project Euler 2:~%----------------~%")
+
+  (convert
+   '(let ((n 4000000)
+          (f1 0)
+          (f2 1)
+          (tmp 0)
+          (sum 0))
+     (while (<= f2 n)
+       (when (= 0 (mod f2 2)) (incf sum f2))
+       (setq tmp f1
+             f1 f2
+             f2 (+ tmp f2)))
+     sum))
+
+  ;; 4613732
+
+  (format t "~%Project Euler 3:~%----------------~%")
+
+  (convert
+   '(last-element (prime-factorization 600851475143)))
+
+  ;; 6857
+
+  (format t "~%Project Euler 5:~%----------------~%")
+
+  (convert
+   '(let ((n 20)
+          (res 1))
+     (dotimes (i n)
+       (setq res (lcm res (+ i 1))))
+     res))
+
+  ;; 232792560
+
+  (format t "~%Project Euler 6:~%----------------~%")
+
+  (convert
+   '(let ((n 100) (res 0))
+     (dotimes (i (+ n 1))
+       (setq res (+ res i)))
+     (setq res (* res res))
+     (dotimes (i (+ n 1))
+       (setq res (- res (* i i))))
+     res))
+
+  ;; 25164150
+
+  (format t "~%Project Euler 9:~%----------------~%")
+
+  (convert
+   '(let ((n 1000)
+          ;;(nb-solutions 0)
+          (res -1))
+     (let ((c n))
+       (while (>= c 3)
+         (let* ((bmax (min (- c 1) (- n c 1)))
+                (bmin (max 2 (/ (- n c) 2)))
+                (b bmax))
+           (while (>= b bmin)
+             (let ((a (- n b c)))
+               (when (= (* c c) (+ (* a a) (* b b)))
+                 ;;(incf nb-solutions)
+                 (setq res (* a b c))))
+             (setq b (- b 1))))
+         (setq c (- c 1))))
+     res))
+
+  ;; 31875000
+
+  ) ; end of main
 
 ;;; end
