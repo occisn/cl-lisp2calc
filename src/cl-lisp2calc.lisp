@@ -336,6 +336,35 @@ Caution: body shall not increase stack size!"
     ;; Restore initial stack: the loop doesn't change net stack size
     (build-output-and-stack-from final-output initial-stack)))
 
+(defun process-while-and (output-and-stack and-args body)
+  "Convert a (while (and (= a1 b1) (= a2 b2)) body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+
+Caution: body shall not increase stack size!
+
+Pattern: Z{ <and computation> 0 a= Z/ <body> Z}
+The and computation pushes 0 or 1. Then 0 a= inverts it: pushes 1 (break) when and=0, pushes 0 (continue) when and=1."
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
+         (body (cons 'progn body))
+         ;; Pre-compute the body's Calc instructions
+         (body-output-in-context (output-of (process-atom-or-sexp output-and-stack body)))
+         (body-output (subseq body-output-in-context 0 (- (length body-output-in-context) (length initial-output)))))
+
+    ;; Build the loop: Z{ → and condition → 0 a= → Z/ (break if and=0) → body → Z}
+    (setq output-and-stack (add-to-output output-and-stack "Z{"))
+    (setq output-and-stack (process-and output-and-stack and-args))
+    ;; and result is on stack — compare with 0 to invert for Z/
+    (pop-and-check-from-stack-of output-and-stack "while-and")
+    (setq output-and-stack (process-atom-or-sexp output-and-stack 0))
+    (pop-and-check-from-stack-of output-and-stack "while-and")
+    (setq output-and-stack (add-to-output output-and-stack "a="))
+    (setq output-and-stack (add-to-output output-and-stack "Z/"))
+    (setq output-and-stack (append-to-output output-and-stack body-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z}"))
+
+    ;; Restore initial stack: the loop doesn't change net stack size
+    (build-output-and-stack-from (output-of output-and-stack) initial-stack)))
+
 (defun process-while (output-and-stack terms)
   "Convert a '(while (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   ;; All comparison variants are reduced to the <= primitive (process-while-<=):
@@ -344,20 +373,23 @@ Caution: body shall not increase stack size!"
   ;;   (> a b)  → (<= b (- a 1))     [swap + adjust]
   (let ((comparison-sexp (car terms))
         (body (cdr terms)))
-    (unless (= 3 (length comparison-sexp))
-      (error "(while) Malformed comparison: ~a" comparison-sexp))
-    (let ((comparison-operator (car comparison-sexp))
-          (term1 (cadr comparison-sexp))
-          (term2 (caddr comparison-sexp)))
-      (cond ((equal '<= comparison-operator)
-             (process-while-<= output-and-stack term1 term2 body))
-            ((equal '< comparison-operator)
-             (process-while-<= output-and-stack term1 `(- ,term2 1) body))
-            ((equal '>= comparison-operator)
-             (process-while-<= output-and-stack term2 term1 body))
-            ((equal '> comparison-operator)
-             (process-while-<= output-and-stack term2 `(- ,term1 1) body))
-            (t (error "(while) Comparison operator not recognized: ~a" comparison-operator))))))
+    (let ((comparison-operator (car comparison-sexp)))
+      (cond ((equal 'and comparison-operator)
+             (process-while-and output-and-stack (cdr comparison-sexp) body))
+            (t
+             (unless (= 3 (length comparison-sexp))
+               (error "(while) Malformed comparison: ~a" comparison-sexp))
+             (let ((term1 (cadr comparison-sexp))
+                   (term2 (caddr comparison-sexp)))
+               (cond ((equal '<= comparison-operator)
+                      (process-while-<= output-and-stack term1 term2 body))
+                     ((equal '< comparison-operator)
+                      (process-while-<= output-and-stack term1 `(- ,term2 1) body))
+                     ((equal '>= comparison-operator)
+                      (process-while-<= output-and-stack term2 term1 body))
+                     ((equal '> comparison-operator)
+                      (process-while-<= output-and-stack term2 `(- ,term1 1) body))
+                     (t (error "(while) Comparison operator not recognized: ~a" comparison-operator)))))))))
 
 ;;; === Conditionals & boolean ===
 
@@ -443,6 +475,8 @@ Caution: body shall not increase stack size!"
                            then-body else-body))
             ((equal 'or condition-operator)
              (process-if-or output-and-stack (cdr control-sexp) then-body else-body))
+            ((equal 'and condition-operator)
+             (process-if-and output-and-stack (cdr control-sexp) then-body else-body))
             (t (error "(if) Condition not recognized: ~a" condition-operator))))))
 
 (defun process-when (output-and-stack terms)
@@ -460,6 +494,9 @@ Caution: body shall not increase stack size!"
             ((equal 'or condition-operator)
              (process-if-or output-and-stack (cdr control-sexp)
                             `(progn ,@body) `(progn)))
+            ((equal 'and condition-operator)
+             (process-if-and output-and-stack (cdr control-sexp)
+                             `(progn ,@body) `(progn)))
             (t (error "(when) Condition not recognized: ~a" condition-operator))))))
 
 (defun process-= (output-and-stack terms)
@@ -526,6 +563,100 @@ If first = is false (a==0), Z[ enters else-branch → evaluate second =, whose a
       ;; Final stack: initial + 1 anonymous result (the 0/1 from whichever branch ran)
       (build-output-and-stack-from (output-of output-and-stack)
                                    (cons 'NIL initial-stack)))))
+
+(defun process-and (output-and-stack terms)
+  "Convert (and (= a1 b1) (= a2 b2)) with exactly 2 equality-test arguments, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Returns 0 or 1 using nested Calc conditionals with short-circuit evaluation.
+
+Pattern: <a1> <b1> a= Z[ <a2> <b2> a= Z: 0 Z]
+The first a= drives Z[ directly — no extra 0 a= wrapper needed.
+If first = is true (a==1), Z[ enters then-branch → evaluate second =, whose a= gives the final 0/1.
+If first = is false (a==0), Z[ enters else-branch → push 0 (short-circuit)."
+  (unless (= 2 (length terms))
+    (error "(and) requires exactly 2 arguments, got: ~a" terms))
+  (let ((first-eq (car terms))
+        (second-eq (cadr terms)))
+    (unless (and (consp first-eq) (equal '= (car first-eq)) (= 3 (length first-eq)))
+      (error "(and) Arguments must be (= a b) forms, got: ~a" first-eq))
+    (unless (and (consp second-eq) (equal '= (car second-eq)) (= 3 (length second-eq)))
+      (error "(and) Arguments must be (= a b) forms, got: ~a" second-eq))
+
+    (let* ((initial-output (output-of output-and-stack))
+           (initial-stack (stack-of output-and-stack))
+           ;; Pre-compute then branch: second = test (evaluated when first is true)
+           (then-result (process-= output-and-stack (cdr second-eq)))
+           (then-output (subseq (output-of then-result) 0
+                                (- (length (output-of then-result))
+                                   (length initial-output))))
+           ;; Pre-compute else branch: just push 0 (short-circuit when first is false)
+           (else-result (process-atom-or-sexp output-and-stack 0))
+           (else-output (subseq (output-of else-result) 0
+                                (- (length (output-of else-result))
+                                   (length initial-output)))))
+
+      ;; Emit first = comparison: <a1> <b1> a=
+      (setq output-and-stack (process-atom-or-sexp output-and-stack (cadr first-eq)))
+      (setq output-and-stack (process-atom-or-sexp output-and-stack (caddr first-eq)))
+      (setq output-and-stack (add-to-output output-and-stack "a="))
+      ;; a= consumed both operands — clean up stack tracking
+      (pop-and-check-from-stack-of output-and-stack "and")
+      (pop-and-check-from-stack-of output-and-stack "and")
+      ;; a= result drives Z[ directly:
+      ;; Z[ then (a==1, first = was true) → evaluate second =
+      ;; Z[ else (a==0, first = was false) → push 0
+      (setq output-and-stack (add-to-output output-and-stack "Z["))
+      (setq output-and-stack (append-to-output output-and-stack then-output))
+      (setq output-and-stack (add-to-output output-and-stack "Z:"))
+      (setq output-and-stack (append-to-output output-and-stack else-output))
+      (setq output-and-stack (add-to-output output-and-stack "Z]"))
+
+      ;; Final stack: initial + 1 anonymous result (the 0/1 from whichever branch ran)
+      (build-output-and-stack-from (output-of output-and-stack)
+                                   (cons 'NIL initial-stack)))))
+
+(defun process-if-and (output-and-stack and-args then-body else-body)
+  "Convert (if/when (and ...) then-body else-body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Uses the and result (0/1) directly with Z[ — no extra 0 a= test needed.
+Z[ enters then-branch when and=1 (truthy), else-branch when and=0 (falsy)."
+  (when (null else-body)
+    (setq else-body '(progn)))
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
+         ;; Pre-compute both branches
+         (then-result (process-atom-or-sexp output-and-stack then-body))
+         (then-body-output (subseq (output-of then-result) 0
+                                   (- (length (output-of then-result))
+                                      (length initial-output))))
+         (then-stack-delta (- (length (stack-of then-result)) (length initial-stack)))
+         (else-result (process-atom-or-sexp output-and-stack else-body))
+         (else-body-output (subseq (output-of else-result) 0
+                                   (- (length (output-of else-result))
+                                      (length initial-output))))
+         (else-stack-delta (- (length (stack-of else-result)) (length initial-stack)))
+         (branch-stack-delta (max then-stack-delta else-stack-delta)))
+
+    ;; Balance branches
+    (when (< else-stack-delta then-stack-delta)
+      (dotimes (i (- then-stack-delta else-stack-delta))
+        (push 0 else-body-output)))
+    (when (< then-stack-delta else-stack-delta)
+      (dotimes (i (- else-stack-delta then-stack-delta))
+        (push 0 then-body-output)))
+
+    ;; Process and expression — pushes 0 or 1
+    (setq output-and-stack (process-and output-and-stack and-args))
+    ;; Z[ consumes the and result — clean up stack tracking
+    (pop-and-check-from-stack-of output-and-stack "if-and")
+    ;; Z[ then (and=1, truthy) → then-body, Z[ else (and=0, falsy) → else-body
+    (setq output-and-stack (add-to-output output-and-stack "Z["))
+    (setq output-and-stack (append-to-output output-and-stack then-body-output))
+    (let ((final-stack (stack-of output-and-stack)))
+      (dotimes (i branch-stack-delta)
+        (push 'NIL final-stack))
+      (setq output-and-stack (add-to-output output-and-stack "Z:"))
+      (setq output-and-stack (append-to-output output-and-stack else-body-output))
+      (setq output-and-stack (add-to-output output-and-stack "Z]"))
+      (build-output-and-stack-from (output-of output-and-stack) final-stack))))
 
 (defun process-if-or (output-and-stack or-args then-body else-body)
   "Convert (if/when (or ...) then-body else-body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
@@ -820,6 +951,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-if output-and-stack (cdr sexp)))
           ((equal 'or operator)
            (process-or output-and-stack (cdr sexp)))
+          ((equal 'and operator)
+           (process-and output-and-stack (cdr sexp)))
           ((equal '= operator)
            (process-= output-and-stack (cdr sexp)))
           ((equal 'incf operator)

@@ -201,6 +201,17 @@
                 (extract-calc-output
                  `(let ((x 5)) (lisp2calc::while (> x 1) (decf x)) x))))
 
+(parachute:define-test test-while-and
+  ;; (while (and (= ...) (= ...)) body): loop while both conditions true
+  ;; x=3,y=3; loop while x=3 AND y=3; body sets y=0 → exits after 1 iteration
+  (parachute:is string=
+                "3 SPC 3 Z{ C-j 3 a= Z[ RET 3 a= Z: 0 Z] 0 a= Z/ 0 SPC M-DEL Z} RET M-DEL M-DEL"
+                (extract-calc-output
+                 `(let* ((x 3) (y 3))
+                    (lisp2calc::while (and (= x 3) (= y 3))
+                      (setq y 0))
+                    y))))
+
 (parachute:define-test test-or
   ;; (or (= 1 1) (= 2 3)) → first true, short-circuits
   (parachute:is string= "1 SPC 1 a= Z[ 1 Z: 2 SPC 3 a= Z]"
@@ -222,6 +233,31 @@
                 (extract-calc-output
                  '(let ((n 9))
                     (when (or (= 0 (mod n 3)) (= 0 (mod n 5))) 1)))))
+
+(parachute:define-test test-and
+  ;; (and (= 1 1) (= 2 2)) → both true → 1
+  (parachute:is string= "1 SPC 1 a= Z[ 2 SPC 2 a= Z: 0 Z]"
+                (extract-calc-output '(and (= 1 1) (= 2 2))))
+  ;; (and (= 1 2) (= 3 3)) → first false, short-circuits → 0
+  (parachute:is string= "1 SPC 2 a= Z[ 3 SPC 3 a= Z: 0 Z]"
+                (extract-calc-output '(and (= 1 2) (= 3 3))))
+  ;; (and (= 1 1) (= 2 3)) → first true, second false → 0
+  (parachute:is string= "1 SPC 1 a= Z[ 2 SPC 3 a= Z: 0 Z]"
+                (extract-calc-output '(and (= 1 1) (= 2 3))))
+  ;; with variables
+  (parachute:is string= "3 SPC RET 3 a= Z[ RET 5 a= Z: 0 Z] M-DEL"
+                (extract-calc-output '(let ((x 3)) (and (= x 3) (= x 5)))))
+  ;; "multiple of 2 and 3" with n=6
+  (parachute:is string=
+                "6 SPC 0 C-j 2 % a= Z[ 0 C-j 3 % a= Z: 0 Z] M-DEL"
+                (extract-calc-output
+                 '(let ((n 6)) (and (= 0 (mod n 2)) (= 0 (mod n 3))))))
+  ;; "multiple of 2 and 3" inside when, n=6
+  (parachute:is string=
+                "6 SPC 0 C-j 2 % a= Z[ 0 C-j 3 % a= Z: 0 Z] Z[ 1 Z: 0 Z] M-DEL"
+                (extract-calc-output
+                 '(let ((n 6))
+                    (when (and (= 0 (mod n 2)) (= 0 (mod n 3))) 1)))))
 
 ;;; ===========================
 ;;; === F. ERROR HANDLING ===

@@ -69,11 +69,12 @@ Recognized Common Lisp macros or functions:
      - `(decf i k)`  
      - `(= a b)` as standalone expression (returns 0 or 1)
      - `(or (= a b) (= c d))` (returns 0 or 1, short-circuit via nested conditionals)
-     - `(if (= ...) ...)` or `(if (or ...) ...)`
-     - `(when (= ...) ...)` or `(when (or ...) ...)`
+     - `(and (= a b) (= c d))` (returns 0 or 1, short-circuit via nested conditionals)
+     - `(if (= ...) ...)` or `(if (or ...) ...)` or `(if (and ...) ...)`
+     - `(when (= ...) ...)` or `(when (or ...) ...)` or `(when (and ...) ...)`
 
 Recognized operators not available in Common Lisp (internal to `lisp2calc` package, use `l2c::` prefix):
-     - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>`
+     - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>` or `(and (= ..) (= ..))`
      - `(prime-factorization n)` → Calc's `k f`
      - `(last-element lst)` = `(car (last lst))` → Calc's `v v v r 1`
 
