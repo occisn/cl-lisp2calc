@@ -69,13 +69,13 @@ Recognized Common Lisp macros or functions:
      - `(decf i)`  
      - `(decf i k)`  
      - `(= a b)` as standalone expression (returns 0 or 1)
-     - `(or (= a b) (= c d))` (returns 0 or 1, short-circuit via nested conditionals)
-     - `(and (= a b) (= c d))` (returns 0 or 1, short-circuit via nested conditionals)
-     - `(if (= ...) ...)` or `(if (or ...) ...)` or `(if (and ...) ...)`
-     - `(when (= ...) ...)` or `(when (or ...) ...)` or `(when (and ...) ...)`
+     - `(not expr)` — boolean negation (returns 0 or 1)
+     - `(or expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)
+     - `(and expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)
+     - `(if cond ...)` or `(when cond ...)` where `cond` is any logical expression (`=`, `>`, `>=`, `<`, `<=`, `or`, `and`, `not`)
 
 Recognized operators not available in Common Lisp (internal to `lisp2calc` package, use `l2c::` prefix):
-     - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>` `/=` or `(and (= ..) (= ..))`
+     - `(while cond body)` where `cond` is a direct comparison (`<=`, `<`, `>=`, `>`, `/=`) or a logical expression (`or`, `and`, `not` wrapping any comparison including `=`), but body shall not increase stack
      - `(prime-factorization n)` → Calc's `k f`
      - `(last-element lst)` = `(car (last lst))` → Calc's `v v v r 1`
 
@@ -89,12 +89,12 @@ Tests use the [Parachute](https://github.com/Shinmera/parachute) framework.
 
 ### Emacs integration tests
 
-In addition to unit tests, an optional suite of integration tests executes the generated Calc macros in a real Emacs Calc session (via `emacs --batch`) and verifies the results. These tests are **disabled by default**.
+In addition to unit tests, an optional suite of integration tests executes the generated Calc macros in a real Emacs Calc session (via `emacs --batch`) and verifies the results. These tests are **enabled by default**.
 
-To enable them:
+To disable them:
 
 ```lisp
-(setf lisp2calc-tests::*run-emacs-tests* t)
+(setf lisp2calc-tests::*run-emacs-tests* nil)
 (asdf:test-system "cl-lisp2calc")
 ```
 

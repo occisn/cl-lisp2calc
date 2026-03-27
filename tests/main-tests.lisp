@@ -284,6 +284,84 @@
                  '(let ((n 6))
                     (when (and (= 0 (mod n 2)) (= 0 (mod n 3))) 1)))))
 
+;;; --- Comparison operators (>, >=, <, <=) via and/or/if/when ---
+
+(parachute:define-test test-and-with-comparisons
+  ;; (and (>= 5 3) (> 4 2)) → both true → 1
+  ;; (>= 5 3) → push 5, push (3-1)=2, a> → 1 since 5>2
+  ;; (> 4 2) → push 4, push 2, a> → 1 since 4>2
+  (parachute:is string= "5 SPC 3 SPC 1 - a> Z[ 4 SPC 2 a> Z: 0 Z]"
+                (extract-calc-output '(and (>= 5 3) (> 4 2))))
+  ;; (and (< 2 5) (<= 3 3)) → both true → 1
+  ;; (< 2 5) → push 5, push 2, a> → 1 since 5>2
+  ;; (<= 3 3) → push 3, push (3-1)=2, a> → 1 since 3>2
+  (parachute:is string= "5 SPC 2 a> Z[ 3 SPC 3 SPC 1 - a> Z: 0 Z]"
+                (extract-calc-output '(and (< 2 5) (<= 3 3))))
+  ;; (and (> 1 5) (= 3 3)) → first false → 0
+  (parachute:is string= "1 SPC 5 a> Z[ 3 SPC 3 a= Z: 0 Z]"
+                (extract-calc-output '(and (> 1 5) (= 3 3)))))
+
+(parachute:define-test test-or-with-comparisons
+  ;; (or (> 5 3) (= 1 2)) → first true → 1
+  (parachute:is string= "5 SPC 3 a> Z[ 1 Z: 1 SPC 2 a= Z]"
+                (extract-calc-output '(or (> 5 3) (= 1 2))))
+  ;; (or (< 5 3) (>= 4 4)) → first false, second true → 1
+  ;; (< 5 3) → push 3, push 5, a> → 0 since 3<5
+  ;; (>= 4 4) → push 4, push (4-1)=3, a> → 1 since 4>3
+  (parachute:is string= "3 SPC 5 a> Z[ 1 Z: 4 SPC 4 SPC 1 - a> Z]"
+                (extract-calc-output '(or (< 5 3) (>= 4 4)))))
+
+(parachute:define-test test-not
+  ;; (not (= 1 1)) → 1=1 is true → not → 0
+  (parachute:is string= "1 SPC 1 a= 0 a="
+                (extract-calc-output '(not (= 1 1))))
+  ;; (not (= 1 2)) → 1=2 is false → not → 1
+  (parachute:is string= "1 SPC 2 a= 0 a="
+                (extract-calc-output '(not (= 1 2))))
+  ;; (not (> 3 5)) → 3>5 is false → not → 1
+  (parachute:is string= "3 SPC 5 a> 0 a="
+                (extract-calc-output '(not (> 3 5)))))
+
+(parachute:define-test test-if-with-comparisons
+  ;; (if (> x 5) 1 0) with x=10 → 1
+  (parachute:is string= "10 SPC RET 5 a> Z[ 1 Z: 0 Z] M-DEL"
+                (extract-calc-output '(let ((x 10)) (if (> x 5) 1 0))))
+  ;; (if (< x 5) 1 0) with x=10 → 0
+  (parachute:is string= "10 SPC 5 C-j a> Z[ 1 Z: 0 Z] M-DEL"
+                (extract-calc-output '(let ((x 10)) (if (< x 5) 1 0)))))
+
+(parachute:define-test test-when-with-comparisons
+  ;; (when (>= x 5) (+ x 1)) with x=5 → 6
+  (parachute:is string= "5 SPC RET 5 SPC 1 - a> Z[ RET 1 + Z: 0 Z] M-DEL"
+                (extract-calc-output '(let ((x 5)) (when (>= x 5) (+ x 1))))))
+
+(parachute:define-test test-if-not
+  ;; (if (not (= x 0)) 1 0) with x=5 → 1
+  (parachute:is string= "5 SPC RET 0 a= 0 a= Z[ 1 Z: 0 Z] M-DEL"
+                (extract-calc-output '(let ((x 5)) (if (not (= x 0)) 1 0)))))
+
+(parachute:define-test test-recursive-logical
+  ;; (and (or (= 1 1) (= 2 3)) (> 5 3)) → (or true false)=1 and (> 5 3)=1 → 1
+  (parachute:is string= "1 SPC 1 a= Z[ 1 Z: 2 SPC 3 a= Z] Z[ 5 SPC 3 a> Z: 0 Z]"
+                (extract-calc-output '(and (or (= 1 1) (= 2 3)) (> 5 3))))
+  ;; (or (and (= 1 2) (= 3 3)) (> 5 3)) → (and false true)=0, (> 5 3)=1 → 1
+  (parachute:is string= "1 SPC 2 a= Z[ 3 SPC 3 a= Z: 0 Z] Z[ 1 Z: 5 SPC 3 a> Z]"
+                (extract-calc-output '(or (and (= 1 2) (= 3 3)) (> 5 3)))))
+
+(parachute:define-test test-while-and-with-comparisons
+  ;; while (and (>= x 0) (> y 0)): x=3, y=1; body decrements both
+  ;; First iteration: x=3>=0 and y=1>0 → continue, x→2, y→0
+  ;; Second iteration: x=2>=0 but y=0>0 is false → exit
+  ;; Final: x=2
+  (parachute:is string=
+                "3 SPC 1 Z{ C-j 0 SPC 1 - a> Z[ RET 0 a> Z: 0 Z] 0 a= Z/ C-j 1 - C-u 3 M-DEL TAB RET 1 - M-DEL Z} C-j M-DEL M-DEL"
+                (extract-calc-output
+                 `(let* ((x 3) (y 1))
+                    (lisp2calc::while (and (>= x 0) (> y 0))
+                      (decf x)
+                      (decf y))
+                    x))))
+
 ;;; ===========================
 ;;; === F. ERROR HANDLING ===
 ;;; ===========================

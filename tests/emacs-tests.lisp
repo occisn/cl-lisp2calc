@@ -213,6 +213,45 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
   (%check-emacs-result
    `(let ((x 5)) (l2c::while (> x 1) (decf x)) x)))
 
+;;; --- Comparison operators & logical expressions ---
+
+(parachute:define-test test-emacs-if->
+  (%check-emacs-result '(let ((x 10)) (if (> x 5) 1 0))))
+
+(parachute:define-test test-emacs-if->=
+  (%check-emacs-result '(let ((x 5)) (if (>= x 5) 1 0))))
+
+(parachute:define-test test-emacs-when-<
+  (%check-emacs-result '(let ((x 3)) (when (< x 10) (+ x 1)))))
+
+(parachute:define-test test-emacs-not
+  (%check-emacs-result '(not (= 1 2)))
+  (%check-emacs-result '(not (= 1 1)))
+  (%check-emacs-result '(not (> 3 5))))
+
+(parachute:define-test test-emacs-and-with-comparisons
+  (%check-emacs-result '(and (>= 5 3) (> 4 2)))
+  (%check-emacs-result '(and (> 1 5) (= 3 3))))
+
+(parachute:define-test test-emacs-or-with-comparisons
+  (%check-emacs-result '(or (> 5 3) (= 1 2)))
+  (%check-emacs-result '(or (< 5 3) (>= 4 4))))
+
+(parachute:define-test test-emacs-if-not
+  (%check-emacs-result '(let ((x 5)) (if (not (= x 0)) 1 0))))
+
+(parachute:define-test test-emacs-recursive-logical
+  (%check-emacs-result '(and (or (= 1 1) (= 2 3)) (> 5 3)))
+  (%check-emacs-result '(or (and (= 1 2) (= 3 3)) (> 5 3))))
+
+(parachute:define-test test-emacs-while-and-with-comparisons
+  (%check-emacs-result
+   `(let* ((x 3) (y 1))
+      (l2c::while (and (>= x 0) (> y 0))
+        (decf x)
+        (decf y))
+      x)))
+
 ;;; --- Applications ---
 
 (defun %check-emacs-result-against (code expected-string)
