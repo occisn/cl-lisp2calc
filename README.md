@@ -54,7 +54,8 @@ Recognized Common Lisp macros or functions:
      - `mod`  
      - `min` (with 2 arguments)  
      - `max` (with 2 arguments)  
-     - `lcm` (with 2 arguments)  
+     - `lcm` (with 2 arguments)
+     - `floor` (with 2 arguments: `(floor n p)` → integer division)
      - `+`  
      - `*`  
      - `-` (which means 'negate' if only one argument)  

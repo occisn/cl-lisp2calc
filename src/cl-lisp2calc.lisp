@@ -829,6 +829,10 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
   "Convert a 'lcm' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   (process-binary-operation output-and-stack terms '("k" "l") "lcm"))
 
+(defun process-floor (output-and-stack terms)
+  "Convert a 'floor' with terms TERMS (only 2 accepted) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (process-binary-operation output-and-stack terms '("/" "F") "floor"))
+
 (defun process-multiple-arguments-operation (output-and-stack terms calc-instructions-list operation-name)
   "Convert an operation with multiple arguments (+, *) with a list of terms TERMS, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
 OPERATION-NAME contains the name of the operation (for error message).
@@ -961,6 +965,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-max output-and-stack (cdr sexp)))
           ((equal 'lcm operator)
            (process-lcm output-and-stack (cdr sexp)))
+          ((equal 'floor operator)
+           (process-floor output-and-stack (cdr sexp)))
           ((equal '+ operator)
            (process-plus output-and-stack (cdr sexp)))
           ((equal '* operator)

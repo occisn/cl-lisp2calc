@@ -100,6 +100,20 @@
 (parachute:define-test test-lcm
   (parachute:is string= "4 SPC 6 k l" (extract-calc-output '(lcm 4 6))))
 
+(parachute:define-test test-floor
+  (parachute:is string= "10 SPC 3 / F" (extract-calc-output '(floor 10 3))))
+
+(parachute:define-test test-floor-nested
+  (parachute:is string= "2 SPC 3 + 4 / F"
+                (extract-calc-output '(floor (+ 2 3) 4))))
+
+(parachute:define-test test-floor-with-variable
+  (parachute:is string= "7 SPC RET 2 / F M-DEL"
+                (extract-calc-output '(let ((n 7)) (floor n 2)))))
+
+(parachute:define-test test-floor-wrong-arity
+  (parachute:fail (lisp2calc:convert '(floor 10))))
+
 (parachute:define-test test-multi-arg-plus
   (parachute:is string= "1 SPC 2 SPC 3 SPC 4 + + +"
                 (extract-calc-output '(+ 1 2 3 4))))
