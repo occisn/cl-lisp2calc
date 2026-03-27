@@ -5,7 +5,7 @@ Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) int
 Table of contents:  
 - [Explanations](#explanations)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [5](#project-euler-5), [6](#project-euler-6), [9](#project-euler-9)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [3](#project-euler-3), [2](#project-euler-2), [5](#project-euler-5), [6](#project-euler-6), [9](#project-euler-9)
 
 ## Explanations
 
@@ -141,6 +141,20 @@ Lisp implementation:
 Calc:
 ```
 1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % a= Z[ 1 Z: 0 C-j 5 % a= Z] Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+```
+
+### Project Euler 3
+
+_The prime factors of 13195 are 5, 7, 13 and 29. What is the largest prime factor of the number 600851475143?_ [(source)](https://projecteuler.net/problem=3)
+
+Lisp implementation:
+``` lisp
+(last-element (prime-factorization 600851475143))
+```
+
+Calc:
+```
+600851475143 k f v v v r 1
 ```
 
 ### Project Euler 2

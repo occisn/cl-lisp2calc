@@ -13,6 +13,13 @@
 
   ;; 233168
 
+  ;; PE 3 :
+
+  (convert
+   '(last-element (prime-factorization 600851475143)))
+
+  ;; 6857
+
   ;; PE 2 :
 
   (convert

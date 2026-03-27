@@ -257,4 +257,9 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
       sum)
    "4613732"))
 
+(parachute:define-test test-emacs-euler-3
+  (%check-emacs-result-against
+   `(lisp2calc::last-element (lisp2calc::prime-factorization 600851475143))
+   "6857"))
+
 ;;; end
