@@ -237,7 +237,7 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
    '(let ((n 1000)
           (sum 0))
       (dotimes (i n)
-        (when (= 0 (* (mod i 3) (mod i 5)))
+        (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
           (incf sum i)))
       sum)
    "233168"))

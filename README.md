@@ -37,17 +37,17 @@ Following code :
 ``` lisp
 (lisp2calc:convert
  '(let ((n 1000)
-        (res 0))
+        (sum 0))
    (dotimes (i n)
-     (when (= 0 (* (mod i 3) (mod i 5)))
-       (setq res (+ res i))))
-   res))
+     (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
+       (incf sum i)))
+   sum))
 ```
 ... returns:
 ```
-1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % C-u 3 C-j 5 % * a= Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL C-u 1 TAB Z} DEL RET M-DEL M-DEL
+1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % a= Z[ 1 Z: 0 C-j 5 % a= Z] Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
 ```
-When executed in GNU Emacs Calc, it yields the right result.  
+When executed in GNU Emacs Calc, it yields the right result.
 (to execute it, copy these instructions to Emacs, highlight them, `M-x read-kbd-macro`, then go to Calc and press `X`)
 
 Recognized Common Lisp macros or functions:  
@@ -67,8 +67,10 @@ Recognized Common Lisp macros or functions:
      - `(incf i k)`  
      - `(decf i)`  
      - `(decf i k)`  
-     - `(if (= ...) ...)`
-     - `(or a b c ...)` (returns 0 or 1, short-circuit via nested conditionals)
+     - `(= a b)` as standalone expression (returns 0 or 1)
+     - `(or (= a b) (= c d))` (returns 0 or 1, short-circuit via nested conditionals)
+     - `(if (= ...) ...)` or `(if (or ...) ...)`
+     - `(when (= ...) ...)` or `(when (or ...) ...)`
 
 Recognized operators not available in Common Lisp (`l2c` suffix):  
      - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>`
@@ -129,14 +131,14 @@ Lisp implementation:
 (let ((n 1000)
       (sum 0))
   (dotimes (i n)
-    (when (= 0 (* (mod i 3) (mod i 5)))
+    (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
       (incf sum i)))
   sum)
 ```
 
 Calc:
 ```
-1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % C-u 3 C-j 5 % * a= Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % a= Z[ 1 Z: 0 C-j 5 % a= Z] Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
 ```
 
 ### Project Euler 2

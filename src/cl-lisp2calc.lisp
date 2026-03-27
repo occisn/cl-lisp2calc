@@ -338,14 +338,15 @@ Caution: body shall not increase stack size!"
   (let ((control-sexp (car terms))
         (then-body (cadr terms))
         (else-body (caddr terms)))
-    (unless (= 3 (length control-sexp))
-      (error "(if) Malformed control form: ~a" control-sexp))
-    (let ((comparison-operator (car control-sexp))
-          (term1 (cadr control-sexp))
-          (term2 (caddr control-sexp)))
-      (cond ((equal '= comparison-operator)
-             (process-if-= output-and-stack term1 term2 then-body else-body))
-            (t (error "(if) Comparison operator not recognized: ~a" comparison-operator))))))
+    (let ((condition-operator (car control-sexp)))
+      (cond ((equal '= condition-operator)
+             (unless (= 3 (length control-sexp))
+               (error "(if) Malformed control form: ~a" control-sexp))
+             (process-if-= output-and-stack (cadr control-sexp) (caddr control-sexp)
+                           then-body else-body))
+            ((equal 'or condition-operator)
+             (process-if-or output-and-stack (cdr control-sexp) then-body else-body))
+            (t (error "(if) Condition not recognized: ~a" condition-operator))))))
 
 (defun process-when (output-and-stack terms)
   "Convert a '(when (...) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -353,69 +354,125 @@ Caution: body shall not increase stack size!"
   ;; The empty else-branch (progn) gets padded with dummy values by process-if-=.
   (let ((control-sexp (car terms))
         (body (cdr terms)))
-    (unless (= 3 (length control-sexp))
-      (error "(when) Malformed control form: ~a" control-sexp))
-    (let ((comparison-operator (car control-sexp))
-          (term1 (cadr control-sexp))
-          (term2 (caddr control-sexp)))
-      (cond ((equal '= comparison-operator)
-             (process-if-= output-and-stack term1 term2 `(progn ,@body) `(progn)))
-            (t (error "(when) Comparison operator not recognized: ~a" comparison-operator))))))
+    (let ((condition-operator (car control-sexp)))
+      (cond ((equal '= condition-operator)
+             (unless (= 3 (length control-sexp))
+               (error "(when) Malformed control form: ~a" control-sexp))
+             (process-if-= output-and-stack (cadr control-sexp) (caddr control-sexp)
+                           `(progn ,@body) `(progn)))
+            ((equal 'or condition-operator)
+             (process-if-or output-and-stack (cdr control-sexp)
+                            `(progn ,@body) `(progn)))
+            (t (error "(when) Condition not recognized: ~a" condition-operator))))))
+
+(defun process-= (output-and-stack terms)
+  "Convert (= term1 term2) as a standalone expression returning 0 or 1, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  (unless (= 2 (length terms))
+    (error "(=) requires exactly 2 arguments, got: ~a" terms))
+  (let ((term1 (car terms))
+        (term2 (cadr terms)))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term1))
+    (setq output-and-stack (process-atom-or-sexp output-and-stack term2))
+    (setq output-and-stack (add-to-output output-and-stack "a="))
+    ;; a= consumed both operands, pushes result (0 or 1)
+    (pop-and-check-from-stack-of output-and-stack "=")
+    (pop-and-check-from-stack-of output-and-stack "=")
+    (build-output-and-stack-from (output-of output-and-stack)
+                                 (cons 'NIL (stack-of output-and-stack)))))
 
 (defun process-or (output-and-stack terms)
-  "Convert an (or ...) with TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
-Returns 0 or 1 using short-circuit evaluation via nested Calc conditionals."
-  (cond
-    ((null terms)
-     (process-atom-or-sexp output-and-stack 0))
-    ((null (cdr terms))
-     (process-atom-or-sexp output-and-stack (car terms)))
-    (t
-     (process-or-multi output-and-stack (car terms) (cdr terms)))))
+  "Convert (or (= a1 b1) (= a2 b2)) with exactly 2 equality-test arguments, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Returns 0 or 1 using nested Calc conditionals with short-circuit evaluation.
 
-(defun process-or-multi (output-and-stack first-arg rest-args)
-  "Convert (or FIRST-ARG REST-ARGS...) with 2+ total args using nested conditionals, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Pattern: <a1> <b1> a= Z[ 1 Z: <a2> <b2> a= Z]
+The first a= drives Z[ directly — no extra 0 a= wrapper needed.
+If first = is true (a==1), Z[ enters then-branch → push 1 (short-circuit).
+If first = is false (a==0), Z[ enters else-branch → evaluate second =, whose a= gives the final 0/1."
+  (unless (= 2 (length terms))
+    (error "(or) requires exactly 2 arguments, got: ~a" terms))
+  (let ((first-eq (car terms))
+        (second-eq (cadr terms)))
+    (unless (and (consp first-eq) (equal '= (car first-eq)) (= 3 (length first-eq)))
+      (error "(or) Arguments must be (= a b) forms, got: ~a" first-eq))
+    (unless (and (consp second-eq) (equal '= (car second-eq)) (= 3 (length second-eq)))
+      (error "(or) Arguments must be (= a b) forms, got: ~a" second-eq))
 
-Pattern: <eval first> 0 a= Z[ <or rest...> Z: 1 Z]
-If first is nonzero (truthy), result is 1. Otherwise recurse on rest."
-
-  ;; a= tests equality: pushes 1 if first==0 (falsy), 0 if first!=0 (truthy).
-  ;; Z[ enters then-branch when test is nonzero (i.e. first was falsy).
-  ;; Then-branch: evaluate (or rest...) recursively.
-  ;; Else-branch: first was truthy, push 1.
-  ;; Both branches push exactly 1 value → balanced.
-
-  (let* ((initial-output (output-of output-and-stack))
-         (initial-stack (stack-of output-and-stack))
-         ;; Pre-compute falsy branch: recursive (or rest-args...)
-         (falsy-result (process-or output-and-stack rest-args))
-         (falsy-output (subseq (output-of falsy-result) 0
-                               (- (length (output-of falsy-result))
-                                  (length initial-output))))
-         ;; Pre-compute truthy branch: push 1
-         (truthy-result (process-atom-or-sexp output-and-stack 1))
-         (truthy-output (subseq (output-of truthy-result) 0
-                                (- (length (output-of truthy-result))
+    (let* ((initial-output (output-of output-and-stack))
+           (initial-stack (stack-of output-and-stack))
+           ;; Pre-compute else branch: second = test (evaluated when first is false)
+           (else-result (process-= output-and-stack (cdr second-eq)))
+           (else-output (subseq (output-of else-result) 0
+                                (- (length (output-of else-result))
+                                   (length initial-output))))
+           ;; Pre-compute then branch: just push 1 (short-circuit when first is true)
+           (then-result (process-atom-or-sexp output-and-stack 1))
+           (then-output (subseq (output-of then-result) 0
+                                (- (length (output-of then-result))
                                    (length initial-output)))))
 
-    ;; Emit: evaluate first arg
-    (setq output-and-stack (process-atom-or-sexp output-and-stack first-arg))
-    ;; Push 0 and test equality
-    (setq output-and-stack (process-atom-or-sexp output-and-stack 0))
-    (setq output-and-stack (add-to-output output-and-stack "a="))
-    ;; a= consumed both operands — clean up stack tracking
-    (pop-and-check-from-stack-of output-and-stack "or")
-    (pop-and-check-from-stack-of output-and-stack "or")
-    ;; Emit conditional: Z[ <falsy branch> Z: <truthy branch> Z]
-    (setq output-and-stack (add-to-output output-and-stack "Z["))
-    (setq output-and-stack (append-to-output output-and-stack falsy-output))
-    (setq output-and-stack (add-to-output output-and-stack "Z:"))
-    (setq output-and-stack (append-to-output output-and-stack truthy-output))
-    (setq output-and-stack (add-to-output output-and-stack "Z]"))
+      ;; Emit first = comparison: <a1> <b1> a=
+      (setq output-and-stack (process-atom-or-sexp output-and-stack (cadr first-eq)))
+      (setq output-and-stack (process-atom-or-sexp output-and-stack (caddr first-eq)))
+      (setq output-and-stack (add-to-output output-and-stack "a="))
+      ;; a= consumed both operands — clean up stack tracking
+      (pop-and-check-from-stack-of output-and-stack "or")
+      (pop-and-check-from-stack-of output-and-stack "or")
+      ;; a= result drives Z[ directly:
+      ;; Z[ then (a==1, first = was true) → push 1
+      ;; Z[ else (a==0, first = was false) → evaluate second =
+      (setq output-and-stack (add-to-output output-and-stack "Z["))
+      (setq output-and-stack (append-to-output output-and-stack then-output))
+      (setq output-and-stack (add-to-output output-and-stack "Z:"))
+      (setq output-and-stack (append-to-output output-and-stack else-output))
+      (setq output-and-stack (add-to-output output-and-stack "Z]"))
 
-    ;; Final stack: initial + 1 anonymous result
-    (build-output-and-stack-from (output-of output-and-stack)
-                                 (cons 'NIL initial-stack))))
+      ;; Final stack: initial + 1 anonymous result (the 0/1 from whichever branch ran)
+      (build-output-and-stack-from (output-of output-and-stack)
+                                   (cons 'NIL initial-stack)))))
+
+(defun process-if-or (output-and-stack or-args then-body else-body)
+  "Convert (if/when (or ...) then-body else-body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Uses the or result (0/1) directly with Z[ — no extra 0 a= test needed.
+Z[ enters then-branch when or=1 (truthy), else-branch when or=0 (falsy)."
+  (when (null else-body)
+    (setq else-body '(progn)))
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
+         ;; Pre-compute both branches
+         (then-result (process-atom-or-sexp output-and-stack then-body))
+         (then-body-output (subseq (output-of then-result) 0
+                                   (- (length (output-of then-result))
+                                      (length initial-output))))
+         (then-stack-delta (- (length (stack-of then-result)) (length initial-stack)))
+         (else-result (process-atom-or-sexp output-and-stack else-body))
+         (else-body-output (subseq (output-of else-result) 0
+                                   (- (length (output-of else-result))
+                                      (length initial-output))))
+         (else-stack-delta (- (length (stack-of else-result)) (length initial-stack)))
+         (branch-stack-delta (max then-stack-delta else-stack-delta)))
+
+    ;; Balance branches
+    (when (< else-stack-delta then-stack-delta)
+      (dotimes (i (- then-stack-delta else-stack-delta))
+        (push 0 else-body-output)))
+    (when (< then-stack-delta else-stack-delta)
+      (dotimes (i (- else-stack-delta then-stack-delta))
+        (push 0 then-body-output)))
+
+    ;; Process or expression — pushes 0 or 1
+    (setq output-and-stack (process-or output-and-stack or-args))
+    ;; Z[ consumes the or result — clean up stack tracking
+    (pop-and-check-from-stack-of output-and-stack "if-or")
+    ;; Z[ then (or=1, truthy) → then-body, Z[ else (or=0, falsy) → else-body
+    (setq output-and-stack (add-to-output output-and-stack "Z["))
+    (setq output-and-stack (append-to-output output-and-stack then-body-output))
+    (let ((final-stack (stack-of output-and-stack)))
+      (dotimes (i branch-stack-delta)
+        (push 'NIL final-stack))
+      (setq output-and-stack (add-to-output output-and-stack "Z:"))
+      (setq output-and-stack (append-to-output output-and-stack else-body-output))
+      (setq output-and-stack (add-to-output output-and-stack "Z]"))
+      (build-output-and-stack-from (output-of output-and-stack) final-stack))))
 
 (defun process-dotimes (output-and-stack terms)
   "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
@@ -660,6 +717,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-if output-and-stack (cdr sexp)))
           ((equal 'or operator)
            (process-or output-and-stack (cdr sexp)))
+          ((equal '= operator)
+           (process-= output-and-stack (cdr sexp)))
           ((equal 'incf operator)
            (process-incf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
           ((equal 'decf operator)

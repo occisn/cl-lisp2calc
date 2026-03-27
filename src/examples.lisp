@@ -5,11 +5,11 @@
 
   (convert
    '(let ((n 1000)
-          (res 0))
+          (sum 0))
      (dotimes (i n)
-       (when (= 0 (* (mod i 3) (mod i 5)))
-         (setq res (+ res i))))
-     res))
+       (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
+         (incf sum i)))
+     sum))
 
   ;; 233168
 
