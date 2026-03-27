@@ -42,7 +42,7 @@ OPERATION-NAME contains the name of the operation which calls this function (to 
 (defun check-stack-length (stack minimal-length operation-name)
   "Check that the length of STACK is >= MINIMAL-LENGTH, otherwise throw an error.
 OPERATION-NAME contains the name of the operation which calls this function (to be displayed in the error message)."
-  (when (< (length stack) 2)
+  (when (< (length stack) minimal-length)
     (error "Not enough elements (should be >= ~a) in the stack to apply '~a'; stack = ~a" minimal-length operation-name stack)))
 
 
@@ -732,6 +732,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
              output-and-stack))
           ((equal 'dotimes operator)
            (process-dotimes output-and-stack (cdr sexp)))
+          ((equal 'prime-factorization operator)
+           (process-prime-factorization output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))
 
 (defun process-positive-number (output-and-stack number)
@@ -831,5 +833,32 @@ For instance: (3 4) --> '3 SPC 4'
     (format t "code = ~a~%" code)
     (format t "final stack (newest first) = ~a~%" (stack-of final-output-and-stack))
     (format t "output = ~a~%" clean-output)))
+
+;;; ==============================
+;;; === ADDITIONAL COMMANDS ===
+;;; ==============================
+
+(defun prime-factorization (n)
+  "Return the prime factors of fixnum N as a flat list, with multiplicity.
+N is supposed to be an integer >= 2."
+  (declare (type fixnum n))
+  (let ((result '()))
+    (flet ((divide-out (factor)
+             (loop while (zerop (mod n factor))
+                   do (push factor result)
+                      (setq n (the fixnum (floor n factor))))))
+      (divide-out 2)
+      (loop for f of-type fixnum from 3 by 2
+            while (<= (the fixnum (* f f)) n)
+            do (divide-out f))
+      (when (> n 1) (push n result)))
+    (nreverse result)))
+
+(defun process-prime-factorization (output-and-stack terms)
+  "Convert a (prime-factorization n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Emits Calc's 'k f' command."
+  (unless (= 1 (length terms))
+    (error "(prime-factorization) requires exactly 1 argument, got: ~a" terms))
+  (process-unary-operation output-and-stack (car terms) '("k" "f") "prime-factorization"))
 
 ;;; end

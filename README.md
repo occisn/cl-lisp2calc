@@ -230,4 +230,16 @@ Calc:
 1000 SPC 1 n C-j Z{ 3 C-j a> Z/ RET 1 - C-u 4 C-j C-u 3 C-j 1 + - f n 2 SPC C-u 5 C-j C-u 4 C-j - 2 / f x C-j Z{ C-j C-j a> Z/ C-u 6 C-j C-j C-u 6 C-j + - C-u 5 C-j C-u 6 C-j * C-j C-u 3 C-j * C-u 4 C-j C-u 5 C-j * + a= Z[ RET C-u 3 C-j C-u 7 C-j * * C-u 7 M-DEL C-u 6 TAB Z: Z] DEL RET 1 - M-DEL Z} DEL DEL DEL RET 1 - M-DEL Z} DEL RET M-DEL M-DEL
 ```
 
+## Additional commands
+
+### prime-factorization
+
+Returns the prime factors of a fixnum N (>= 2) as a flat list with multiplicity.
+
+``` lisp
+(lisp2calc::prime-factorization 12)   ;; => (2 2 3)
+(lisp2calc::prime-factorization 210)  ;; => (2 3 5 7)
+(lisp2calc::prime-factorization 1024) ;; => (2 2 2 2 2 2 2 2 2 2)
+```
+
 (end of README)

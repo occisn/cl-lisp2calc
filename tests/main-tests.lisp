@@ -229,4 +229,28 @@
 (parachute:define-test test-wrong-arity
   (parachute:fail (lisp2calc:convert '(mod 1 2 3))))
 
+;;; ====================================
+;;; === G. ADDITIONAL COMMANDS ===
+;;; ====================================
+
+(parachute:define-test test-prime-factorization
+  (parachute:is equal '(2) (lisp2calc::prime-factorization 2))
+  (parachute:is equal '(3) (lisp2calc::prime-factorization 3))
+  (parachute:is equal '(2 2) (lisp2calc::prime-factorization 4))
+  (parachute:is equal '(2 3) (lisp2calc::prime-factorization 6))
+  (parachute:is equal '(2 2 2) (lisp2calc::prime-factorization 8))
+  (parachute:is equal '(2 2 3) (lisp2calc::prime-factorization 12))
+  (parachute:is equal '(7) (lisp2calc::prime-factorization 7))
+  (parachute:is equal '(2 3 5 7) (lisp2calc::prime-factorization 210))
+  (parachute:is equal '(2 2 2 2 2 2 2 2 2 2) (lisp2calc::prime-factorization 1024))
+  (parachute:is equal '(101) (lisp2calc::prime-factorization 101)))
+
+(parachute:define-test test-convert-prime-factorization
+  ;; literal number
+  (parachute:is string= "12 k f"
+                (extract-calc-output `(lisp2calc::prime-factorization 12)))
+  ;; with variable
+  (parachute:is string= "210 SPC RET k f M-DEL"
+                (extract-calc-output `(let ((n 210)) (lisp2calc::prime-factorization n)))))
+
 ;;; end
