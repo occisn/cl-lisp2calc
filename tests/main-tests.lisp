@@ -126,11 +126,18 @@
   (parachute:is string= "5 SPC RET M-DEL"
                 (extract-calc-output '(let ((x 5)) x))))
 
-(parachute:define-test test-let-multiple
-  (parachute:is string= "3 SPC 4 C-j C-j + M-DEL M-DEL"
-                (extract-calc-output '(let ((x 3) (y 4)) (+ x y)))))
+(parachute:define-test test-let-multiple-bindings-error
+  (parachute:fail (lisp2calc:convert '(let ((x 3) (y 4)) (+ x y)))))
 
-(parachute:define-test test-let-star
+(parachute:define-test test-let*-single
+  (parachute:is string= "5 SPC RET M-DEL"
+                (extract-calc-output '(let* ((x 5)) x))))
+
+(parachute:define-test test-let*-multiple
+  (parachute:is string= "3 SPC 4 C-j C-j + M-DEL M-DEL"
+                (extract-calc-output '(let* ((x 3) (y 4)) (+ x y)))))
+
+(parachute:define-test test-let*-cross-ref
   (parachute:is string= "3 SPC RET 1 + RET M-DEL M-DEL"
                 (extract-calc-output '(let* ((x 3) (y (+ x 1))) y))))
 
@@ -148,7 +155,7 @@
 
 (parachute:define-test test-setq-multiple
   (parachute:is string= "1 SPC 2 SPC 10 SPC C-u 3 M-DEL TAB 20 SPC M-DEL C-j C-j + M-DEL M-DEL"
-                (extract-calc-output '(let ((x 1) (y 2)) (setq x 10 y 20) (+ x y)))))
+                (extract-calc-output '(let* ((x 1) (y 2)) (setq x 10 y 20) (+ x y)))))
 
 ;;; =========================
 ;;; === E. CONTROL FLOW ===

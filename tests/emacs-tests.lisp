@@ -167,8 +167,8 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
 (parachute:define-test test-emacs-let-single
   (%check-emacs-result '(let ((x 5)) x)))
 
-(parachute:define-test test-emacs-let-multiple
-  (%check-emacs-result '(let ((x 3) (y 4)) (+ x y))))
+(parachute:define-test test-emacs-let*-multiple
+  (%check-emacs-result '(let* ((x 3) (y 4)) (+ x y))))
 
 (parachute:define-test test-emacs-let-star
   (%check-emacs-result '(let* ((x 3) (y (+ x 1))) y)))
@@ -178,7 +178,7 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
 
 (parachute:define-test test-emacs-setq-multiple
   (%check-emacs-result
-   '(let ((x 1) (y 2)) (setq x 10 y 20) (+ x y))))
+   '(let* ((x 1) (y 2)) (setq x 10 y 20) (+ x y))))
 
 (parachute:define-test test-emacs-incf
   (%check-emacs-result '(let ((x 3)) (incf x) x)))
@@ -234,8 +234,8 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
 
 (parachute:define-test test-emacs-euler-1
   (%check-emacs-result-against
-   '(let ((n 1000)
-          (sum 0))
+   '(let* ((n 1000)
+           (sum 0))
       (dotimes (i n)
         (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
           (incf sum i)))
@@ -244,11 +244,11 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
 
 (parachute:define-test test-emacs-euler-2
   (%check-emacs-result-against
-   `(let ((n 4000000)
-          (f1 0)
-          (f2 1)
-          (tmp 0)
-          (sum 0))
+   `(let* ((n 4000000)
+           (f1 0)
+           (f2 1)
+           (tmp 0)
+           (sum 0))
       (l2c::while (<= f2 n)
         (when (= 0 (mod f2 2)) (incf sum f2))
         (setq tmp f1

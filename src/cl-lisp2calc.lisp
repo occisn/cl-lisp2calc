@@ -127,17 +127,72 @@ Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extrac
 ;;; === Variable binding & assignment ===
 
 (defun process-let (output-and-stack terms)
-  "Convert a 'let' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
+  "Convert a 'let' with terms TERMS (exactly one binding and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Only one binding is allowed; use 'let*' for multiple bindings."
 
-  ;; Example: (let ((x 3) (y 4)) (+ x y))
-  ;;   (1) Push 3 → stack: [x=3]; push 4 → stack: [y=4, x=3]
-  ;;   (2) Body (+ x y): C-j (copy x) + RET (copy y) + "+" → result on top
-  ;;       stack: [NIL, y=4, x=3]
-  ;;   (3) Clean up y (pos 1 → M-DEL), then x (pos 1 → M-DEL)
-  ;;   Output: "3 SPC 4 C-j RET + M-DEL M-DEL"
+  ;; Example: (let ((x 3)) (+ x 1))
+  ;;   (1) Push 3 → stack: [x=3]
+  ;;   (2) Body (+ x 1): RET (copy x) + "1" + "+" → result on top
+  ;;       stack: [NIL, x=3]
+  ;;   (3) Clean up x (pos 1 → M-DEL)
+  ;;   Output: "3 SPC RET 1 + M-DEL"
 
   (unless (>= (length terms) 2)
     (error "Not enough terms for a 'let' within ~a" terms))
+  (let ((bindings (car terms))
+        (body (cdr terms)))
+    (unless (= 1 (length bindings))
+      (error "'let' accepts exactly one binding; use 'let*' for multiple bindings: ~a" bindings))
+
+    ;; (1) Process bindings: evaluate each binding's value expression, then
+    ;; replace the anonymous NIL marker on top of the stack with the variable name.
+    ;; This allows later references to find the variable by name via POSITION.
+    (dolist (binding bindings)
+      (let* ((symbol0 (car binding))
+             (value-exp (cadr binding))
+             (output-and-stack2 (process-atom-or-sexp output-and-stack value-exp)))
+        (setq output-and-stack
+              (build-output-and-stack-from (output-of output-and-stack2)
+                                           (cons symbol0 (cdr (stack-of output-and-stack2)))))))
+
+    ;; (2) Process body (wrapped in progn to handle multiple body forms):
+    (setq output-and-stack
+          (process-sexp output-and-stack (cons 'progn body)))
+
+    ;; (3) Clean up: delete each binding from the Calc stack in reverse order.
+    ;; Reverse order ensures stack positions remain valid as we delete from top.
+    ;; DEL = delete top element, M-DEL = delete 2nd element,
+    ;; C-u N M-DEL = delete N-th element (1-indexed in Calc).
+    (let ((output (output-of output-and-stack))
+          (stack (stack-of output-and-stack)))
+      (dolist (binding (reverse bindings))
+        (let* ((symbol0 (car binding))
+               (place-of-symbol-in-stack
+                (position symbol0 stack)))
+          (when (null place-of-symbol-in-stack)
+            (error "(let) Variable ~a supposed to be deleted not found in stack" symbol0))
+          (setq output (append
+                        (cond ((= 0 place-of-symbol-in-stack)
+                               (list "DEL"))
+                              ((= 1 place-of-symbol-in-stack)
+                               (list "M-DEL"))
+                              (t (reverse (list "C-u" (+ 1 place-of-symbol-in-stack) "M-DEL"))))
+                        output))
+          (setq stack (delete-nth place-of-symbol-in-stack stack))))
+      (build-output-and-stack-from output stack))))
+
+(defun process-let* (output-and-stack terms)
+  "Convert a 'let*' with terms TERMS (bindings and body) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Bindings are processed sequentially: each binding can reference earlier bindings."
+
+  ;; Example: (let* ((x 3) (y (+ x 1))) y)
+  ;;   (1) Push 3 → stack: [x=3]; evaluate (+ x 1) → stack: [y=4, x=3]
+  ;;   (2) Body y: RET (copy y) → stack: [NIL, y=4, x=3]
+  ;;   (3) Clean up y (pos 1 → M-DEL), then x (pos 1 → M-DEL)
+  ;;   Output: "3 SPC RET 1 + RET M-DEL M-DEL"
+
+  (unless (>= (length terms) 2)
+    (error "Not enough terms for a 'let*' within ~a" terms))
   (let ((bindings (car terms))
         (body (cdr terms)))
 
@@ -167,7 +222,7 @@ Equivalent to (car (last lst)). Emits Calc's 'v v v r 1' (reverse vector, extrac
                (place-of-symbol-in-stack
                 (position symbol0 stack)))
           (when (null place-of-symbol-in-stack)
-            (error "(let) Variable ~a supposed to be deleted not found in stack" symbol0))
+            (error "(let*) Variable ~a supposed to be deleted not found in stack" symbol0))
           (setq output (append
                         (cond ((= 0 place-of-symbol-in-stack)
                                (list "DEL"))
@@ -753,8 +808,10 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-unary-divide output-and-stack (car (cdr sexp))))
           ((and (equal '/ operator) (<= 2 (length (cdr sexp))))
            (process-divide output-and-stack (cdr sexp)))
-          ((or (equal 'let operator) (equal 'let* operator))
+          ((equal 'let operator)
            (process-let output-and-stack (cdr sexp)))
+          ((equal 'let* operator)
+           (process-let* output-and-stack (cdr sexp)))
           ((equal 'while operator) ; (string= "WHILE" (symbol-name operator))
            (process-while output-and-stack (cdr sexp)))
           ((equal 'when operator)
@@ -891,8 +948,8 @@ For instance: (3 4) --> '3 SPC 4'
   (format t "~%Project Euler 1:~%----------------~%")
 
   (convert
-   '(let ((n 1000)
-          (sum 0))
+   '(let* ((n 1000)
+           (sum 0))
      (dotimes (i n)
        (when (or (= 0 (mod i 3)) (= 0 (mod i 5)))
          (incf sum i)))
@@ -904,11 +961,11 @@ For instance: (3 4) --> '3 SPC 4'
   (format t "~%Project Euler 2:~%----------------~%")
 
   (convert
-   '(let ((n 4000000)
-          (f1 0)
-          (f2 1)
-          (tmp 0)
-          (sum 0))
+   '(let* ((n 4000000)
+           (f1 0)
+           (f2 1)
+           (tmp 0)
+           (sum 0))
      (while (<= f2 n)
        (when (= 0 (mod f2 2)) (incf sum f2))
        (setq tmp f1
@@ -928,8 +985,8 @@ For instance: (3 4) --> '3 SPC 4'
   (format t "~%Project Euler 5:~%----------------~%")
 
   (convert
-   '(let ((n 20)
-          (res 1))
+   '(let* ((n 20)
+           (res 1))
      (dotimes (i n)
        (setq res (lcm res (+ i 1))))
      res))
@@ -939,7 +996,7 @@ For instance: (3 4) --> '3 SPC 4'
   (format t "~%Project Euler 6:~%----------------~%")
 
   (convert
-   '(let ((n 100) (res 0))
+   '(let* ((n 100) (res 0))
      (dotimes (i (+ n 1))
        (setq res (+ res i)))
      (setq res (* res res))
@@ -952,9 +1009,9 @@ For instance: (3 4) --> '3 SPC 4'
   (format t "~%Project Euler 9:~%----------------~%")
 
   (convert
-   '(let ((n 1000)
-          ;;(nb-solutions 0)
-          (res -1))
+   '(let* ((n 1000)
+           ;;(nb-solutions 0)
+           (res -1))
      (let ((c n))
        (while (>= c 3)
          (let* ((bmax (min (- c 1) (- n c 1)))
