@@ -8,6 +8,10 @@
   "When non-NIL, run integration tests that execute Calc macros in Emacs.
 Set to T before running (asdf:test-system \"cl-lisp2calc\") to enable.")
 
+(defvar *run-very-long-emacs-tests* nil
+  "When non-NIL, run very long Emacs integration tests (e.g. Euler 4).
+These tests can take tens of minutes in Emacs Calc.")
+
 (defvar *emacs-program*
   (or (probe-file "/usr/bin/emacs")
       (probe-file "/mnt/c/portable-programs/emacs-30.2/bin/emacs.exe")
@@ -300,5 +304,27 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
   (%check-emacs-result-against
    `(lisp2calc::last-element (lisp2calc::prime-factorization 600851475143))
    "6857"))
+
+(parachute:define-test test-emacs-euler-4
+  (when *run-very-long-emacs-tests*
+    (%check-emacs-result-against
+     `(let* ((max-palindrome 0)
+             (i 999))
+        (l2c::while (>= i 100)
+          (let ((j i))
+            (l2c::while (and (>= j 100) (> (* i j) max-palindrome))
+              (let* ((product (* i j))
+                     (reversed (let* ((num product)
+                                      (acc 0))
+                                 (l2c::while (/= num 0)
+                                   (setf acc (+ (* 10 acc) (mod num 10)))
+                                   (setf num (floor num 10)))
+                                 acc)))
+                (when (= product reversed)
+                  (setf max-palindrome product)))
+              (decf j)))
+          (decf i))
+        max-palindrome)
+     "906609")))
 
 ;;; end

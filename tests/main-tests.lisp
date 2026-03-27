@@ -366,6 +366,30 @@
                       (decf y))
                     x))))
 
+(parachute:define-test test-euler-4
+  ;; Euler 4: largest palindrome from product of two 3-digit numbers
+  ;; Tests nested while-and, nested let*, when with =, floor, mod
+  (parachute:is string=
+                "0 SPC 999 Z{ 100 C-j a> Z/ RET Z{ RET 100 SPC 1 - a> Z[ C-j C-j * C-u 4 C-j a> Z: 0 Z] 0 a= Z/ C-j C-j * RET 0 Z{ C-j 0 a= Z/ 10 C-j * C-u 3 C-j 10 % + M-DEL C-j 10 / F C-u 3 M-DEL TAB Z} RET M-DEL M-DEL C-j C-j a= Z[ C-j C-u 6 M-DEL C-u 5 TAB Z: Z] DEL DEL RET 1 - M-DEL Z} DEL RET 1 - M-DEL Z} C-j M-DEL M-DEL"
+                (extract-calc-output
+                 `(let* ((max-palindrome 0)
+                         (i 999))
+                    (lisp2calc::while (>= i 100)
+                      (let ((j i))
+                        (lisp2calc::while (and (>= j 100) (> (* i j) max-palindrome))
+                          (let* ((product (* i j))
+                                 (reversed (let* ((num product)
+                                                  (acc 0))
+                                             (lisp2calc::while (/= num 0)
+                                               (setf acc (+ (* 10 acc) (mod num 10)))
+                                               (setf num (floor num 10)))
+                                             acc)))
+                            (when (= product reversed)
+                              (setf max-palindrome product)))
+                          (decf j)))
+                      (decf i))
+                    max-palindrome))))
+
 ;;; ===========================
 ;;; === F. ERROR HANDLING ===
 ;;; ===========================

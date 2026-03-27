@@ -5,7 +5,7 @@ Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) int
 Table of contents:  
 - [Explanations](#explanations)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [5](#project-euler-5), [6](#project-euler-6), [9](#project-euler-9)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [9](#project-euler-9)
 
 ## Explanations
 
@@ -181,6 +181,36 @@ Lisp implementation:
 Calc:
 ```
 600851475143 k f v v v r 1
+```
+
+### Project Euler 4
+
+_A palindromic number reads the same both ways. The largest palindrome made from the product of two 2-digit numbers is 9009 = 91 x 99. Find the largest palindrome made from the product of two 3-digit numbers._ [(source)](https://projecteuler.net/problem=4)
+
+Lisp implementation:
+``` lisp
+(let* ((max-palindrome 0)
+       (i 999))
+  (while (>= i 100)
+    (let ((j i))
+      (while (and (>= j 100) (> (* i j) max-palindrome))
+        (let* ((product (* i j))
+               (reversed (let* ((num product)
+                                (acc 0))
+                           (while (/= num 0)
+                             (setf acc (+ (* 10 acc) (mod num 10)))
+                             (setf num (floor num 10)))
+                           acc)))
+          (when (= product reversed)
+            (setf max-palindrome product)))
+        (decf j)))
+    (decf i))
+  max-palindrome)
+```
+
+Calc:
+```
+0 SPC 999 Z{ 100 C-j a> Z/ RET Z{ RET 100 SPC 1 - a> Z[ C-j C-j * C-u 4 C-j a> Z: 0 Z] 0 a= Z/ C-j C-j * RET 0 Z{ C-j 0 a= Z/ 10 C-j * C-u 3 C-j 10 % + M-DEL C-j 10 / F C-u 3 M-DEL TAB Z} RET M-DEL M-DEL C-j C-j a= Z[ C-j C-u 6 M-DEL C-u 5 TAB Z: Z] DEL DEL RET 1 - M-DEL Z} DEL RET 1 - M-DEL Z} C-j M-DEL M-DEL
 ```
 
 ### Project Euler 5
