@@ -62,8 +62,8 @@ Recognized Common Lisp macros or functions:
      - `/` (which means 'inverse' if only one argument)  
      - `progn`  
      - `let` (one binding only) or `let*`
-     - `(setq n (+ m 3))` with no use of the value,  
-     - `(setq n (+ m 3) j (+ k 2))` = setq with multiple assignements,  
+     - `(setq n (+ m 3))` or `(setf n (+ m 3))` with no use of the value,
+     - `(setq n (+ m 3) j (+ k 2))` = setq/setf with multiple assignements,
      - `(incf i)`  
      - `(incf i k)`  
      - `(decf i)`  

@@ -922,7 +922,7 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-incf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
           ((equal 'decf operator)
            (process-decf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
-          ((equal 'setq operator)
+          ((or (equal 'setq operator) (equal 'setf operator))
            (let ((args (cdr sexp)))
              (loop while args do
                (setq output-and-stack

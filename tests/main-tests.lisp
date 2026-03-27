@@ -159,6 +159,10 @@
   (parachute:is string= "3 SPC 5 SPC M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 3)) (setq x 5) x))))
 
+(parachute:define-test test-setf
+  (parachute:is string= "3 SPC 5 SPC M-DEL RET M-DEL"
+                (extract-calc-output '(let ((x 3)) (setf x 5) x))))
+
 (parachute:define-test test-incf
   (parachute:is string= "3 SPC RET 1 + M-DEL RET M-DEL"
                 (extract-calc-output '(let ((x 3)) (incf x) x))))
