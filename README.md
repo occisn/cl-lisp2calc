@@ -67,8 +67,9 @@ Recognized Common Lisp macros or functions:
      - `(incf i k)`  
      - `(decf i)`  
      - `(decf i k)`  
-     - `(if (= ...) ...)`  
-     
+     - `(if (= ...) ...)`
+     - `(or a b c ...)` (returns 0 or 1, short-circuit via nested conditionals)
+
 Recognized operators not available in Common Lisp (`l2c` suffix):  
      - `(while (<= a b) body)` but body shall not increase stack, and variants with `<` `>=` `>`
 

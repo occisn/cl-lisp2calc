@@ -194,6 +194,44 @@
                 (extract-calc-output
                  `(let ((x 5)) (lisp2calc::while (> x 1) (decf x)) x))))
 
+(parachute:define-test test-or
+  ;; (or) → 0
+  (parachute:is string= "0"
+                (extract-calc-output '(or)))
+  ;; (or 1) → pass through
+  (parachute:is string= "1"
+                (extract-calc-output '(or 1)))
+  ;; (or 0 1) → two args, first falsy → evaluate second
+  (parachute:is string= "0 SPC 0 a= Z[ 1 Z: 1 Z]"
+                (extract-calc-output '(or 0 1)))
+  ;; (or 1 0 1) → three args, nested
+  (parachute:is string= "1 SPC 0 a= Z[ 0 SPC 0 a= Z[ 1 Z: 1 Z] Z: 1 Z]"
+                (extract-calc-output '(or 1 0 1)))
+  ;; with variable
+  (parachute:is string= "0 SPC RET 0 a= Z[ 1 Z: 1 Z] M-DEL"
+                (extract-calc-output '(let ((x 0)) (or x 1))))
+  ;; "multiple of 3 or 5" with n=9 (mult of 3)
+  (parachute:is string=
+                "9 SPC RET 3 % 0 a= Z[ 1 Z: 0 Z] 0 a= Z[ RET 5 % 0 a= Z[ 1 Z: 0 Z] Z: 1 Z] M-DEL"
+                (extract-calc-output
+                 '(let ((n 9))
+                    (or (if (= (mod n 3) 0) 1 0)
+                        (if (= (mod n 5) 0) 1 0)))))
+  ;; n=25 (mult of 5 only)
+  (parachute:is string=
+                "25 SPC RET 3 % 0 a= Z[ 1 Z: 0 Z] 0 a= Z[ RET 5 % 0 a= Z[ 1 Z: 0 Z] Z: 1 Z] M-DEL"
+                (extract-calc-output
+                 '(let ((n 25))
+                    (or (if (= (mod n 3) 0) 1 0)
+                        (if (= (mod n 5) 0) 1 0)))))
+  ;; n=30 (mult of both)
+  (parachute:is string=
+                "30 SPC RET 3 % 0 a= Z[ 1 Z: 0 Z] 0 a= Z[ RET 5 % 0 a= Z[ 1 Z: 0 Z] Z: 1 Z] M-DEL"
+                (extract-calc-output
+                 '(let ((n 30))
+                    (or (if (= (mod n 3) 0) 1 0)
+                        (if (= (mod n 5) 0) 1 0))))))
+
 ;;; ===========================
 ;;; === F. ERROR HANDLING ===
 ;;; ===========================

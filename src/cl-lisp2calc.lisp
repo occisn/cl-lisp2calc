@@ -362,6 +362,61 @@ Caution: body shall not increase stack size!"
              (process-if-= output-and-stack term1 term2 `(progn ,@body) `(progn)))
             (t (error "(when) Comparison operator not recognized: ~a" comparison-operator))))))
 
+(defun process-or (output-and-stack terms)
+  "Convert an (or ...) with TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Returns 0 or 1 using short-circuit evaluation via nested Calc conditionals."
+  (cond
+    ((null terms)
+     (process-atom-or-sexp output-and-stack 0))
+    ((null (cdr terms))
+     (process-atom-or-sexp output-and-stack (car terms)))
+    (t
+     (process-or-multi output-and-stack (car terms) (cdr terms)))))
+
+(defun process-or-multi (output-and-stack first-arg rest-args)
+  "Convert (or FIRST-ARG REST-ARGS...) with 2+ total args using nested conditionals, taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+
+Pattern: <eval first> 0 a= Z[ <or rest...> Z: 1 Z]
+If first is nonzero (truthy), result is 1. Otherwise recurse on rest."
+
+  ;; a= tests equality: pushes 1 if first==0 (falsy), 0 if first!=0 (truthy).
+  ;; Z[ enters then-branch when test is nonzero (i.e. first was falsy).
+  ;; Then-branch: evaluate (or rest...) recursively.
+  ;; Else-branch: first was truthy, push 1.
+  ;; Both branches push exactly 1 value → balanced.
+
+  (let* ((initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
+         ;; Pre-compute falsy branch: recursive (or rest-args...)
+         (falsy-result (process-or output-and-stack rest-args))
+         (falsy-output (subseq (output-of falsy-result) 0
+                               (- (length (output-of falsy-result))
+                                  (length initial-output))))
+         ;; Pre-compute truthy branch: push 1
+         (truthy-result (process-atom-or-sexp output-and-stack 1))
+         (truthy-output (subseq (output-of truthy-result) 0
+                                (- (length (output-of truthy-result))
+                                   (length initial-output)))))
+
+    ;; Emit: evaluate first arg
+    (setq output-and-stack (process-atom-or-sexp output-and-stack first-arg))
+    ;; Push 0 and test equality
+    (setq output-and-stack (process-atom-or-sexp output-and-stack 0))
+    (setq output-and-stack (add-to-output output-and-stack "a="))
+    ;; a= consumed both operands — clean up stack tracking
+    (pop-and-check-from-stack-of output-and-stack "or")
+    (pop-and-check-from-stack-of output-and-stack "or")
+    ;; Emit conditional: Z[ <falsy branch> Z: <truthy branch> Z]
+    (setq output-and-stack (add-to-output output-and-stack "Z["))
+    (setq output-and-stack (append-to-output output-and-stack falsy-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z:"))
+    (setq output-and-stack (append-to-output output-and-stack truthy-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z]"))
+
+    ;; Final stack: initial + 1 anonymous result
+    (build-output-and-stack-from (output-of output-and-stack)
+                                 (cons 'NIL initial-stack))))
+
 (defun process-dotimes (output-and-stack terms)
   "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
   ;; Desugared into: (let ((i 0)) (while (< i max) body... (incf i)))
@@ -603,6 +658,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-when output-and-stack (cdr sexp)))
           ((equal 'if operator)
            (process-if output-and-stack (cdr sexp)))
+          ((equal 'or operator)
+           (process-or output-and-stack (cdr sexp)))
           ((equal 'incf operator)
            (process-incf output-and-stack (cadr sexp) (or (caddr sexp) 1)))
           ((equal 'decf operator)
