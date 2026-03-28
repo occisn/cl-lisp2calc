@@ -314,6 +314,17 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
       res)
    "232792560"))
 
+(parachute:define-test test-emacs-euler-6
+  (%check-emacs-result-against
+   '(let* ((n 100) (res 0))
+      (dotimes (i (+ n 1))
+        (setq res (+ res i)))
+      (setq res (* res res))
+      (dotimes (i (+ n 1))
+        (setq res (- res (* i i))))
+      res)
+   "25164150"))
+
 (parachute:define-test test-emacs-euler-4
   (when *run-very-long-emacs-tests*
     (%check-emacs-result-against

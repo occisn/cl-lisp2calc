@@ -1112,6 +1112,19 @@ For instance: (3 4) --> '3 SPC 4'
 
   ;; 232792560
 
+  (format t "~%Project Euler 6:~%----------------~%")
+
+  (convert
+   '(let* ((n 100) (res 0))
+     (dotimes (i (+ n 1))
+       (setq res (+ res i)))
+     (setq res (* res res))
+     (dotimes (i (+ n 1))
+       (setq res (- res (* i i))))
+     res))
+
+  ;; 25164150
+
   ) ; end of main
 
 ;;; end

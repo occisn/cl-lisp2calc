@@ -7,7 +7,7 @@ Table of contents:
 - [About GNU Emacs Calc](#about-gnu-emacs-calc)  
 - [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6)
 
 ## Usage
 
@@ -254,6 +254,26 @@ Lisp implementation:
 Calc:
 ```
 20 SPC 1 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ C-j C-j 1 + k l C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+```
+
+### Project Euler 6
+
+_The sum of the squares of the first ten natural numbers is 385. The square of the sum of the first ten natural numbers is 3025. Hence the difference is 3025 - 385 = 2640. Find the difference between the square of the sum and the sum of the squares of the first one hundred natural numbers._ [(source)](https://projecteuler.net/problem=6)
+
+Lisp implementation:
+``` lisp
+(let* ((n 100) (res 0))
+  (dotimes (i (+ n 1))
+    (setq res (+ res i)))
+  (setq res (* res res))
+  (dotimes (i (+ n 1))
+    (setq res (- res (* i i))))
+  res)
+```
+
+Calc:
+```
+100 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 + 1 - a> Z/ C-j C-j + C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET C-j * M-DEL 0 Z{ RET C-u 4 C-j 1 + 1 - a> Z/ C-j C-j C-u 3 C-j * - C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
 ```
 
 (end of README)
