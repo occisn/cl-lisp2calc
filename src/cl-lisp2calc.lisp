@@ -1114,7 +1114,7 @@ For instance: (3 4) --> '3 SPC 4'
          (clean-output (add-spaces (reverse (car final-output-and-stack)))))
     (format t "~%")
     (format t "code = ~a~%" code)
-    (format t "~%final stack (newest first) = ~a~%" (stack-of final-output-and-stack))
+    (format t "~%final stack size = ~a (should be 1)~%" (length (stack-of final-output-and-stack)))
     (format t "~%output = ~a~%" clean-output)))
 
 ;;; ================

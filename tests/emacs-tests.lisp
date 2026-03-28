@@ -8,6 +8,9 @@
   "When non-NIL, run integration tests that execute Calc macros in Emacs.
 Set to T before running (asdf:test-system \"cl-lisp2calc\") to enable.")
 
+(defvar *run-long-emacs-tests* nil
+  "When non-NIL, run long Emacs integration tests (e.g. Euler 7).")
+
 (defvar *run-very-long-emacs-tests* nil
   "When non-NIL, run very long Emacs integration tests (e.g. Euler 4).
 These tests can take tens of minutes in Emacs Calc.")
@@ -305,42 +308,6 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
    `(lisp2calc::last-element (lisp2calc::prime-factorization 600851475143))
    "6857"))
 
-(parachute:define-test test-emacs-euler-5
-  (%check-emacs-result-against
-   '(let* ((n 20)
-           (res 1))
-      (dotimes (i n)
-        (setq res (lcm res (+ i 1))))
-      res)
-   "232792560"))
-
-(parachute:define-test test-emacs-euler-6
-  (%check-emacs-result-against
-   '(let* ((n 100) (res 0))
-      (dotimes (i (+ n 1))
-        (setq res (+ res i)))
-      (setq res (* res res))
-      (dotimes (i (+ n 1))
-        (setq res (- res (* i i))))
-      res)
-   "25164150"))
-
-(parachute:define-test test-emacs-euler-7a
-  (when *run-very-long-emacs-tests*
-    (%check-emacs-result-against
-     '(let ((n 2))
-        (loop repeat 10000 do (setq n (l2c::next-prime n)))
-        n)
-     "104743")))
-
-(parachute:define-test test-emacs-euler-7b
-  (when *run-very-long-emacs-tests*
-    (%check-emacs-result-against
-     '(let ((n 2))
-        (dotimes (_ 10000) (setq n (l2c::next-prime n)))
-        n)
-     "104743")))
-
 (parachute:define-test test-emacs-euler-4
   (when *run-very-long-emacs-tests*
     (%check-emacs-result-against
@@ -362,5 +329,43 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
           (decf i))
         max-palindrome)
      "906609")))
+
+(parachute:define-test test-emacs-euler-5
+    (%check-emacs-result-against
+     '(let* ((n 20)
+             (res 1))
+       (dotimes (i n)
+         (setq res (lcm res (+ i 1))))
+       res)
+     "232792560"))
+
+(parachute:define-test test-emacs-euler-6
+  (%check-emacs-result-against
+   '(let* ((n 100) (res 0))
+      (dotimes (i (+ n 1))
+        (setq res (+ res i)))
+      (setq res (* res res))
+      (dotimes (i (+ n 1))
+        (setq res (- res (* i i))))
+      res)
+   "25164150"))
+
+(parachute:define-test test-emacs-euler-7a
+  (when *run-long-emacs-tests*
+    (%check-emacs-result-against
+     '(let ((n 2))
+        (loop repeat 10000 do (setq n (l2c::next-prime n)))
+        n)
+     "104743")))
+
+(parachute:define-test test-emacs-euler-7b
+  (when *run-long-emacs-tests*
+    (%check-emacs-result-against
+     '(let ((n 2))
+        (dotimes (_ 10000) (setq n (l2c::next-prime n)))
+        n)
+     "104743")))
+
+
 
 ;;; end
