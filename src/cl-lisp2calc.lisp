@@ -23,6 +23,15 @@
           never (or (zerop (mod n factor))
                     (zerop (mod n (+ factor 2)))))))
 
+(defun next-prime (n)
+  "Return next prime after fixnum N.
+Note: if N is prime, the result is not N."
+  (if
+   (<= n 1)
+   2
+   (loop for i from (+ n (if (evenp n) 1 2)) by 2
+        when (primep i) return i)))
+
 (defun prime-factorization (n)
   "Return the prime factors of fixnum N as a flat list, with multiplicity.
 N is supposed to be an integer >= 2."
@@ -136,6 +145,13 @@ Emits Calc's 'k f v l 1 a=' (prime-factorize, vector length, compare to 1)."
   (unless (= 1 (length terms))
     (error "(primep) requires exactly 1 argument, got: ~a" terms))
   (process-unary-operation output-and-stack (car terms) '("k" "f" "v" "l" 1 "a=") "primep"))
+
+(defun process-next-prime (output-and-stack terms)
+  "Convert a (next-prime n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Emits Calc's 'k n' command (next prime after n)."
+  (unless (= 1 (length terms))
+    (error "(next-prime) requires exactly 1 argument, got: ~a" terms))
+  (process-unary-operation output-and-stack (car terms) '("k" "n") "next-prime"))
 
 (defun process-last-element (output-and-stack terms)
   "Convert a (last-element lst) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
@@ -955,6 +971,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-prime-factorization output-and-stack (cdr sexp)))
           ((equal 'primep operator)
            (process-primep output-and-stack (cdr sexp)))
+          ((equal 'next-prime operator)
+           (process-next-prime output-and-stack (cdr sexp)))
           ((equal 'last-element operator)
            (process-last-element output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))

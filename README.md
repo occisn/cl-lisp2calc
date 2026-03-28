@@ -103,6 +103,7 @@ Recognized operators not available in Common Lisp (internal to `lisp2calc` packa
      - `(while cond body)` where `cond` is a direct comparison (`<=`, `<`, `>=`, `>`, `/=`) or a logical expression (`or`, `and`, `not` wrapping any comparison including `=`), but body shall not increase stack
      - `(prime-factorization n)` → Calc's `k f`
      - `(primep n)` → Calc's `k f v l 1 a=` (returns 1 if prime, 0 otherwise)
+     - `(next-prime n)` → Calc's `k n` (next prime after n)
      - `(last-element lst)` = `(car (last lst))` → Calc's `v v v r 1`
 
 ## Testing

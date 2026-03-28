@@ -450,6 +450,26 @@
   (parachute:is string= "7 SPC RET k f v l 1 a= M-DEL"
                 (extract-calc-output `(let ((n 7)) (lisp2calc::primep n)))))
 
+(parachute:define-test test-next-prime
+  (parachute:is = 3 (lisp2calc::next-prime 2))
+  (parachute:is = 5 (lisp2calc::next-prime 3))
+  (parachute:is = 5 (lisp2calc::next-prime 4))
+  (parachute:is = 7 (lisp2calc::next-prime 5))
+  (parachute:is = 7 (lisp2calc::next-prime 6))
+  (parachute:is = 11 (lisp2calc::next-prime 7))
+  (parachute:is = 2 (lisp2calc::next-prime 0))
+  (parachute:is = 2 (lisp2calc::next-prime 1))
+  (parachute:is = 29 (lisp2calc::next-prime 23))
+  (parachute:is = 101 (lisp2calc::next-prime 97)))
+
+(parachute:define-test test-convert-next-prime
+  ;; literal number
+  (parachute:is string= "7 k n"
+                (extract-calc-output `(lisp2calc::next-prime 7)))
+  ;; with variable
+  (parachute:is string= "7 SPC RET k n M-DEL"
+                (extract-calc-output `(let ((n 7)) (lisp2calc::next-prime n)))))
+
 (parachute:define-test test-convert-last-element
   ;; literal number
   (parachute:is string= "12 v v v r 1"
