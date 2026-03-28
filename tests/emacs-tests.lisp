@@ -385,6 +385,16 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
         res)
      "31875000")))
 
-
+(parachute:define-test test-emacs-euler-10
+  (when *run-long-emacs-tests*
+    (%check-emacs-result-against
+     `(let* ((lim 2000000)
+             (n 2)
+             (sum 0))
+        (l2c::while (< n lim)
+          (incf sum n)
+          (setq n (l2c::next-prime n)))
+        sum)
+     "142913828922")))
 
 ;;; end

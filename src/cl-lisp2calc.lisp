@@ -1245,6 +1245,19 @@ For instance: (3 4) --> '3 SPC 4'
 
   ;; 31875000
 
+  (format t "~%Project Euler 10:~%-----------------~%")
+
+  (convert
+   '(let* ((lim 2000000)
+           (n 2)
+           (sum 0))
+     (while (< n lim)
+       (incf sum n)
+       (setq n (next-prime n)))
+     sum))
+
+  ;; 142913828922
+
   ) ; end of main
 
 ;;; end

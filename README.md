@@ -7,7 +7,7 @@ Table of contents:
 - [About GNU Emacs Calc](#about-gnu-emacs-calc)  
 - [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7), [9](#project-euler-9)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7), [9](#project-euler-9), [10](#project-euler-10)
 
 ## Usage
 
@@ -331,6 +331,26 @@ Lisp implementation:
 Calc:
 ```
 1000 SPC 1 n C-j Z{ 3 C-j a> Z/ RET 1 - C-u 4 C-j C-u 3 C-j 1 + - f n 2 SPC C-u 5 C-j C-u 4 C-j - 2 / F f x C-j Z{ C-j C-j a> Z/ C-u 6 C-j C-j C-u 6 C-j + - C-u 5 C-j C-u 6 C-j * C-j C-u 3 C-j * C-u 4 C-j C-u 5 C-j * + a= Z[ RET C-u 3 C-j C-u 7 C-j * * C-u 7 M-DEL C-u 6 TAB Z: Z] DEL RET 1 - M-DEL Z} DEL DEL DEL RET 1 - M-DEL Z} DEL RET M-DEL M-DEL
+```
+
+### Project Euler 10
+
+_The sum of the primes below 10 is 2 + 3 + 5 + 7 = 17. Find the sum of all the primes below two million._ [(source)](https://projecteuler.net/problem=10)
+
+Lisp implementation:
+``` lisp
+(let* ((lim 2000000)
+       (n 2)
+       (sum 0))
+  (while (< n lim)
+    (incf sum n)
+    (setq n (next-prime n)))
+  sum)
+```
+
+Calc:
+```
+2000000 SPC 2 SPC 0 Z{ C-j C-u 4 C-j 1 - a> Z/ RET C-u 3 C-j + M-DEL C-j k n C-u 3 M-DEL TAB Z} RET M-DEL M-DEL M-DEL
 ```
 
 (end of README)
