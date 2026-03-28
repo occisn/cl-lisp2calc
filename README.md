@@ -3,11 +3,17 @@
 Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) into stack-based GNU Emacs Calc.
 
 Table of contents:  
-- [Explanations](#explanations)  
+- [Usage](#usage)  
+- [About GNU Emacs Calc](#about-gnu-emacs-calc)  
+- [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
 - [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4)
 
-## Explanations
+## Usage 
+
+(later)
+
+## About Gnu Emacs Calc
 
 Calc is a stack-based calculator included in GNU Emacs. It can be used as a standard calculator similar to HP28/48 calculators, or for advanced mathematics.
 
@@ -23,17 +29,18 @@ For instance, if the stack contains the following elements:
 the following macro will manipulate the above stack and return the 3 first digits of 123456789, that is to say 123:
 ```
 TAB RET H L F 1 + C-u 3 C-M-i - n f S F
-``` 
+```
+
 (to execute it, copy these instructions to Emacs, highlight them, `M-x read-kbd-macro`, then go to Calc and press `X`)
 
-You can also refer to my project 'calc-programming', which essentially uses Calc to solve Project Euler puzzles.
-
+## Explanations on lisp2calc (the present project)
+    
 Let's give an exemple of the possible use of this 'lisp2calc' code.
 
 We choose [Project Euler 1](https://projecteuler.net/problem=1) as an example.  
 _If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23. Find the sum of all the multiples of 3 or 5 below 1000._
 
-Following code :
+Following Lisp (Common Lisp) code :
 ``` lisp
 (lisp2calc:convert
  '(let* ((n 1000)
@@ -43,7 +50,7 @@ Following code :
        (incf sum i)))
    sum))
 ```
-... returns:
+... is convert info:
 ```
 1000 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ 0 C-j 3 % a= Z[ 1 Z: 0 C-j 5 % a= Z] Z[ C-j C-j + C-u 3 M-DEL TAB Z: Z] RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
 ```
@@ -212,6 +219,5 @@ Calc:
 ```
 0 SPC 999 Z{ 100 C-j a> Z/ RET Z{ RET 100 SPC 1 - a> Z[ C-j C-j * C-u 4 C-j a> Z: 0 Z] 0 a= Z/ C-j C-j * RET 0 Z{ C-j 0 a= Z/ 10 C-j * C-u 3 C-j 10 % + M-DEL C-j 10 / F C-u 3 M-DEL TAB Z} RET M-DEL M-DEL C-j C-j a= Z[ C-j C-u 6 M-DEL C-u 5 TAB Z: Z] DEL DEL RET 1 - M-DEL Z} DEL RET 1 - M-DEL Z} C-j M-DEL M-DEL
 ```
-
 
 (end of README)
