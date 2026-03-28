@@ -79,34 +79,35 @@ Recognized Common Lisp macros or functions:
      - `mod`  
      - `min` (with 2 arguments)  
      - `max` (with 2 arguments)  
-     - `lcm` (with 2 arguments)
-     - `floor` (with 2 arguments: `(floor n p)` → integer division)
+     - `lcm` (with 2 arguments)  
+     - `floor` (with 2 arguments: `(floor n p)` → integer division)  
      - `+`  
      - `*`  
      - `-` (which means 'negate' if only one argument)  
      - `/` (which means 'inverse' if only one argument)  
      - `progn`  
-     - `let` (one binding only) or `let*`
-     - `(setq n (+ m 3))` or `(setf n (+ m 3))` with no use of the value,
-     - `(setq n (+ m 3) j (+ k 2))` = setq/setf with multiple assignements,
+     - `let` (one binding only) or `let*`  
+     - `(setq n (+ m 3))` or `(setf n (+ m 3))` with no use of the value,  
+     - `(setq n (+ m 3) j (+ k 2))` = setq/setf with multiple assignements,  
      - `(incf i)`  
      - `(incf i k)`  
      - `(decf i)`  
      - `(decf i k)`  
-     - `(= a b)` as standalone expression (returns 0 or 1)
-     - `(not expr)` — boolean negation (returns 0 or 1)
-     - `(or expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)
-     - `(and expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)
-     - `(if cond ...)` or `(when cond ...)` where `cond` is any logical expression (`=`, `>`, `>=`, `<`, `<=`, `or`, `and`, `not`)
-     - `(dotimes (_ N) body...)` → Calc's `N Z< body Z>` (repeat body N times, unused loop variable)
-     - `(loop repeat N do body...)` → Calc's `N Z< body Z>` (repeat body N times)
+     - `(= a b)` as standalone expression (returns 0 or 1)  
+     - `(not expr)` — boolean negation (returns 0 or 1)  
+     - `(or expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)  
+     - `(and expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)  
+     - `dotimes`  
+     - `(if cond ...)` or `(when cond ...)` where `cond` is any logical expression (`=`, `>`, `>=`, `<`, `<=`, `or`, `and`, `not`)  
+     - `(dotimes (_ N) body...)` → Calc's `N Z< body Z>` (repeat body N times, unused loop variable)  
+     - `(loop repeat N do body...)` → Calc's `N Z< body Z>` (repeat body N times)  
 
-Recognized operators not available in Common Lisp (internal to `lisp2calc` package, use `l2c::` prefix):
-     - `(while cond body)` where `cond` is a direct comparison (`<=`, `<`, `>=`, `>`, `/=`) or a logical expression (`or`, `and`, `not` wrapping any comparison including `=`), but body shall not increase stack
-     - `(prime-factorization n)` → Calc's `k f`
-     - `(primep n)` → Calc's `k f v l 1 a=` (returns 1 if prime, 0 otherwise)
-     - `(next-prime n)` → Calc's `k n` (next prime after n)
-     - `(last-element lst)` = `(car (last lst))` → Calc's `v v v r 1`
+Recognized operators not available in Common Lisp (internal to `lisp2calc` package, use `l2c::` prefix):  
+     - `(while cond body)` where `cond` is a direct comparison (`<=`, `<`, `>=`, `>`, `/=`) or a logical expression (`or`, `and`, `not` wrapping any comparison including `=`), but body shall not increase stack  
+     - `(prime-factorization n)` → Calc's `k f`  
+     - `(primep n)` → Calc's `k f v l 1 a=` (returns 1 if prime, 0 otherwise)  
+     - `(next-prime n)` → Calc's `k n` (next prime after n)  
+     - `(last-element lst)` = `(car (last lst))` → Calc's `v v v r 1`  
 
 ## Testing
 
