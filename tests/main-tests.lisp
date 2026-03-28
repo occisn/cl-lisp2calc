@@ -390,6 +390,27 @@
                       (decf i))
                     max-palindrome))))
 
+(parachute:define-test test-loop-repeat-literal
+  ;; (loop repeat 3 do (incf x)) with x=0 → x becomes 3
+  ;; 0 = push x, 3 = push N, Z< = start repeat, RET 1 + M-DEL = incf x, Z> = end repeat
+  ;; RET = copy x, M-DEL = let cleanup
+  (parachute:is string= "0 SPC 3 Z< RET 1 + M-DEL Z> RET M-DEL"
+                (extract-calc-output '(let ((x 0)) (loop repeat 3 do (incf x)) x))))
+
+(parachute:define-test test-loop-repeat-variable
+  ;; (loop repeat n do (incf x)) with n=5, x=0 → x becomes 5
+  ;; C-j copies n (position 1 → depth 2 → C-j)
+  (parachute:is string= "5 SPC 0 C-j Z< RET 1 + M-DEL Z> RET M-DEL M-DEL"
+                (extract-calc-output '(let* ((n 5) (x 0)) (loop repeat n do (incf x)) x))))
+
+(parachute:define-test test-loop-repeat-multi-body
+  ;; Multiple body forms: (incf x) and (incf x) → x incremented by 2 each iteration
+  (parachute:is string= "0 SPC 3 Z< RET 1 + M-DEL RET 1 + M-DEL Z> RET M-DEL"
+                (extract-calc-output '(let ((x 0)) (loop repeat 3 do (incf x) (incf x)) x))))
+
+(parachute:define-test test-loop-repeat-malformed
+  (parachute:fail (lisp2calc:convert '(loop 3))))
+
 ;;; ===========================
 ;;; === F. ERROR HANDLING ===
 ;;; ===========================

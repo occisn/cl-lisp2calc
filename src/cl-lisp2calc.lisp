@@ -460,6 +460,41 @@ or process-while-/=. Compound logical conditions (and, or, not) use process-whil
                       (process-while-<= output-and-stack term2 `(- ,term1 1) body))
                      (t (error "(while) Comparison operator not recognized: ~a" condition-operator)))))))))
 
+;;; === Loop repeat ===
+
+(defun process-loop-repeat (output-and-stack terms)
+  "Convert a (loop repeat N do body...) taking into account current OUTPUT-AND-STACK,
+and return an updated output-and-stack.
+
+Caution: body shall not increase stack size!
+
+Pattern: N Z< body Z>"
+  ;; terms = (repeat N do body-form1 body-form2 ...)
+  (unless (and (>= (length terms) 4)
+               (string= "REPEAT" (symbol-name (car terms)))
+               (string= "DO" (symbol-name (caddr terms))))
+    (error "(loop) Expected (loop repeat N do body...), got: (loop ~{~a ~})" terms))
+  (let* ((n-expr (cadr terms))
+         (body-forms (cdddr terms))
+         (initial-output (output-of output-and-stack))
+         (initial-stack (stack-of output-and-stack))
+         (body (cons 'progn body-forms))
+         ;; Pre-compute the body's Calc instructions by running it in isolation
+         ;; on the current state, then extracting only the new instructions
+         (body-output-in-context (output-of (process-atom-or-sexp output-and-stack body)))
+         (body-output (subseq body-output-in-context 0
+                              (- (length body-output-in-context) (length initial-output)))))
+    ;; Process N (pushes onto stack)
+    (setq output-and-stack (process-atom-or-sexp output-and-stack n-expr))
+    ;; Pop N from stack tracking (consumed by Z<)
+    (pop-and-check-from-stack-of output-and-stack "loop-repeat")
+    ;; Emit: Z< body Z>
+    (setq output-and-stack (add-to-output output-and-stack "Z<"))
+    (setq output-and-stack (append-to-output output-and-stack body-output))
+    (setq output-and-stack (add-to-output output-and-stack "Z>"))
+    ;; Restore initial stack (loop doesn't change net stack size)
+    (build-output-and-stack-from (output-of output-and-stack) initial-stack)))
+
 ;;; === Conditionals & boolean ===
 
 (defun process-if-logical (output-and-stack condition-sexp then-body else-body)
@@ -975,6 +1010,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-next-prime output-and-stack (cdr sexp)))
           ((equal 'last-element operator)
            (process-last-element output-and-stack (cdr sexp)))
+          ((equal 'loop operator)
+           (process-loop-repeat output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))
 
 (defun process-positive-number (output-and-stack number)
