@@ -9,6 +9,10 @@ Table of contents:
 - [Testing](#testing)  
 - [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7), [9](#project-euler-9), [10](#project-euler-10)
 
+Related projects:  
+\- [Problem solving in GNU Calc](https://github.com/occisn/calc-problem-solving)  
+\- [calc-llm](https://github.com/occisn/calc-llm): LLM to convert numerical puzzle into GNU Calc
+
 ## Usage
 
 ```lisp
@@ -55,7 +59,8 @@ TAB RET H L F 1 + C-u 3 C-M-i - n f S F
     
 Let's give an exemple of the possible use of this 'lisp2calc' code.
 
-We choose [Project Euler 1](https://projecteuler.net/problem=1) as an example.  
+We choose [Project Euler 1](https://projecteuler.net/problem=1) as an example.
+
 _If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23. Find the sum of all the multiples of 3 or 5 below 1000._
 
 Following Lisp (Common Lisp) code :
