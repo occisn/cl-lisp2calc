@@ -7,7 +7,7 @@ Table of contents:
 - [About GNU Emacs Calc](#about-gnu-emacs-calc)  
 - [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5)
 
 ## Usage 
 
@@ -218,6 +218,24 @@ Lisp implementation:
 Calc:
 ```
 0 SPC 999 Z{ 100 C-j a> Z/ RET Z{ RET 100 SPC 1 - a> Z[ C-j C-j * C-u 4 C-j a> Z: 0 Z] 0 a= Z/ C-j C-j * RET 0 Z{ C-j 0 a= Z/ 10 C-j * C-u 3 C-j 10 % + M-DEL C-j 10 / F C-u 3 M-DEL TAB Z} RET M-DEL M-DEL C-j C-j a= Z[ C-j C-u 6 M-DEL C-u 5 TAB Z: Z] DEL DEL RET 1 - M-DEL Z} DEL RET 1 - M-DEL Z} C-j M-DEL M-DEL
+```
+
+### Project Euler 5
+
+_2520 is the smallest number that can be divided by each of the numbers from 1 to 10 without any remainder. What is the smallest positive number that is evenly divisible by all of the numbers from 1 to 20?_ [(source)](https://projecteuler.net/problem=5)
+
+Lisp implementation:
+``` lisp
+(let* ((n 20)
+       (res 1))
+  (dotimes (i n)
+    (setq res (lcm res (+ i 1))))
+  res)
+```
+
+Calc:
+```
+20 SPC 1 SPC 0 Z{ RET C-u 4 C-j 1 - a> Z/ C-j C-j 1 + k l C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
 ```
 
 (end of README)

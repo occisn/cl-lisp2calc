@@ -1078,6 +1078,29 @@ For instance: (3 4) --> '3 SPC 4'
 
   ;; 6857
 
+  (format t "~%Project Euler 4:~%----------------~%")
+
+  (convert
+   '(let* ((max-palindrome 0)
+           (i 999))
+     (while (>= i 100)
+       (let ((j i))
+         (while (and (>= j 100) (> (* i j) max-palindrome))
+           (let* ((product (* i j))
+                  (reversed (let* ((num product)
+                                   (acc 0))
+                              (while (/= num 0)
+                                (setf acc (+ (* 10 acc) (mod num 10)))
+                                (setf num (floor num 10)))
+                              acc)))
+             (when (= product reversed)
+               (setf max-palindrome product)))
+           (decf j)))
+       (decf i))
+     max-palindrome))
+
+  ;; 906609
+
   (format t "~%Project Euler 5:~%----------------~%")
 
   (convert
@@ -1088,41 +1111,6 @@ For instance: (3 4) --> '3 SPC 4'
      res))
 
   ;; 232792560
-
-  (format t "~%Project Euler 6:~%----------------~%")
-
-  (convert
-   '(let* ((n 100) (res 0))
-     (dotimes (i (+ n 1))
-       (setq res (+ res i)))
-     (setq res (* res res))
-     (dotimes (i (+ n 1))
-       (setq res (- res (* i i))))
-     res))
-
-  ;; 25164150
-
-  (format t "~%Project Euler 9:~%----------------~%")
-
-  (convert
-   '(let* ((n 1000)
-           ;;(nb-solutions 0)
-           (res -1))
-     (let ((c n))
-       (while (>= c 3)
-         (let* ((bmax (min (- c 1) (- n c 1)))
-                (bmin (max 2 (/ (- n c) 2)))
-                (b bmax))
-           (while (>= b bmin)
-             (let ((a (- n b c)))
-               (when (= (* c c) (+ (* a a) (* b b)))
-                 ;;(incf nb-solutions)
-                 (setq res (* a b c))))
-             (setq b (- b 1))))
-         (setq c (- c 1))))
-     res))
-
-  ;; 31875000
 
   ) ; end of main
 

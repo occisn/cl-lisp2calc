@@ -305,6 +305,15 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
    `(lisp2calc::last-element (lisp2calc::prime-factorization 600851475143))
    "6857"))
 
+(parachute:define-test test-emacs-euler-5
+  (%check-emacs-result-against
+   '(let* ((n 20)
+           (res 1))
+      (dotimes (i n)
+        (setq res (lcm res (+ i 1))))
+      res)
+   "232792560"))
+
 (parachute:define-test test-emacs-euler-4
   (when *run-very-long-emacs-tests*
     (%check-emacs-result-against
