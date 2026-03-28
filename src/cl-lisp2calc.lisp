@@ -1225,6 +1225,26 @@ For instance: (3 4) --> '3 SPC 4'
 
   ;; 104743
 
+  (format t "~%Project Euler 9:~%-----------------~%")
+
+  (convert
+   '(let* ((n 1000)
+           (res -1))
+     (let ((c n))
+       (while (>= c 3)
+         (let* ((bmax (min (- c 1) (- n c 1)))
+                (bmin (max 2 (floor (- n c) 2)))
+                (b bmax))
+           (while (>= b bmin)
+             (let ((a (- n b c)))
+               (when (= (* c c) (+ (* a a) (* b b)))
+                 (setq res (* a b c))))
+             (setq b (- b 1))))
+         (setq c (- c 1))))
+     res))
+
+  ;; 31875000
+
   ) ; end of main
 
 ;;; end

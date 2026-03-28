@@ -7,7 +7,7 @@ Table of contents:
 - [About GNU Emacs Calc](#about-gnu-emacs-calc)  
 - [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7), [9](#project-euler-9)
 
 ## Usage
 
@@ -304,6 +304,33 @@ Second Lisp implementation (using `dotimes _`):
 Calc:
 ```
 2 SPC 10000 Z< RET k n M-DEL Z> RET M-DEL
+```
+
+### Project Euler 9
+
+_A Pythagorean triplet is a set of three natural numbers, a < b < c, for which a² + b² = c². There exists exactly one Pythagorean triplet for which a + b + c = 1000. Find the product abc._ [(source)](https://projecteuler.net/problem=9)
+
+Lisp implementation:
+``` lisp
+(let* ((n 1000)
+       (res -1))
+  (let ((c n))
+    (while (>= c 3)
+      (let* ((bmax (min (- c 1) (- n c 1)))
+             (bmin (max 2 (floor (- n c) 2)))
+             (b bmax))
+        (while (>= b bmin)
+          (let ((a (- n b c)))
+            (when (= (* c c) (+ (* a a) (* b b)))
+              (setq res (* a b c))))
+          (setq b (- b 1))))
+      (setq c (- c 1))))
+  res)
+```
+
+Calc:
+```
+1000 SPC 1 n C-j Z{ 3 C-j a> Z/ RET 1 - C-u 4 C-j C-u 3 C-j 1 + - f n 2 SPC C-u 5 C-j C-u 4 C-j - 2 / F f x C-j Z{ C-j C-j a> Z/ C-u 6 C-j C-j C-u 6 C-j + - C-u 5 C-j C-u 6 C-j * C-j C-u 3 C-j * C-u 4 C-j C-u 5 C-j * + a= Z[ RET C-u 3 C-j C-u 7 C-j * * C-u 7 M-DEL C-u 6 TAB Z: Z] DEL RET 1 - M-DEL Z} DEL DEL DEL RET 1 - M-DEL Z} DEL RET M-DEL M-DEL
 ```
 
 (end of README)

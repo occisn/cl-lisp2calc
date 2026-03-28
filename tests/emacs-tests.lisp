@@ -366,6 +366,25 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
         n)
      "104743")))
 
+(parachute:define-test test-emacs-euler-9
+  (when *run-very-long-emacs-tests*
+    (%check-emacs-result-against
+     `(let* ((n 1000)
+             (res -1))
+        (let ((c n))
+          (l2c::while (>= c 3)
+            (let* ((bmax (min (- c 1) (- n c 1)))
+                   (bmin (max 2 (floor (- n c) 2)))
+                   (b bmax))
+              (l2c::while (>= b bmin)
+                (let ((a (- n b c)))
+                  (when (= (* c c) (+ (* a a) (* b b)))
+                    (setq res (* a b c))))
+                (setq b (- b 1))))
+            (setq c (- c 1))))
+        res)
+     "31875000")))
+
 
 
 ;;; end
