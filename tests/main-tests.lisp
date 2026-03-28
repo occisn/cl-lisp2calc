@@ -427,6 +427,29 @@
   (parachute:is string= "210 SPC RET k f M-DEL"
                 (extract-calc-output `(let ((n 210)) (lisp2calc::prime-factorization n)))))
 
+(parachute:define-test test-primep
+  (parachute:is eq t (lisp2calc::primep 2))
+  (parachute:is eq t (lisp2calc::primep 3))
+  (parachute:is eq nil (lisp2calc::primep 4))
+  (parachute:is eq t (lisp2calc::primep 5))
+  (parachute:is eq nil (lisp2calc::primep 6))
+  (parachute:is eq t (lisp2calc::primep 7))
+  (parachute:is eq nil (lisp2calc::primep 1))
+  (parachute:is eq nil (lisp2calc::primep 0))
+  (parachute:is eq t (lisp2calc::primep 101))
+  (parachute:is eq nil (lisp2calc::primep 100)))
+
+(parachute:define-test test-convert-primep
+  ;; literal number — prime
+  (parachute:is string= "7 k f v l 1 a="
+                (extract-calc-output `(lisp2calc::primep 7)))
+  ;; literal number — not prime
+  (parachute:is string= "12 k f v l 1 a="
+                (extract-calc-output `(lisp2calc::primep 12)))
+  ;; with variable
+  (parachute:is string= "7 SPC RET k f v l 1 a= M-DEL"
+                (extract-calc-output `(let ((n 7)) (lisp2calc::primep n)))))
+
 (parachute:define-test test-convert-last-element
   ;; literal number
   (parachute:is string= "12 v v v r 1"

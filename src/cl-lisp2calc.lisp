@@ -10,6 +10,19 @@
   `(loop while ,condition
          do (progn ,@body)))
 
+(defun primep (n)
+  "Return t if and only if N is prime."
+  (block outer
+    (when (or (= n 2) (= n 3) (= n 5) (= n 7))
+      (return-from outer t))
+    (when (or (<= n 1) (evenp n) (zerop (mod n 3)))
+      (return-from outer nil))
+    (loop for factor from 5 by 6
+          with root-n = (isqrt n) ; root-n^2 <= n < (root-n + 1)^2
+          while (<= factor root-n)
+          never (or (zerop (mod n factor))
+                    (zerop (mod n (+ factor 2)))))))
+
 (defun prime-factorization (n)
   "Return the prime factors of fixnum N as a flat list, with multiplicity.
 N is supposed to be an integer >= 2."
@@ -116,6 +129,13 @@ Emits Calc's 'k f' command."
   (unless (= 1 (length terms))
     (error "(prime-factorization) requires exactly 1 argument, got: ~a" terms))
   (process-unary-operation output-and-stack (car terms) '("k" "f") "prime-factorization"))
+
+(defun process-primep (output-and-stack terms)
+  "Convert a (primep n) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+Emits Calc's 'k f v l 1 a=' (prime-factorize, vector length, compare to 1)."
+  (unless (= 1 (length terms))
+    (error "(primep) requires exactly 1 argument, got: ~a" terms))
+  (process-unary-operation output-and-stack (car terms) '("k" "f" "v" "l" 1 "a=") "primep"))
 
 (defun process-last-element (output-and-stack terms)
   "Convert a (last-element lst) taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
@@ -933,6 +953,8 @@ CALC-INSTRUCTIONS-LIST contains the list of related calc instructions."
            (process-dotimes output-and-stack (cdr sexp)))
           ((equal 'prime-factorization operator)
            (process-prime-factorization output-and-stack (cdr sexp)))
+          ((equal 'primep operator)
+           (process-primep output-and-stack (cdr sexp)))
           ((equal 'last-element operator)
            (process-last-element output-and-stack (cdr sexp)))
           (t (error "Operator not recognized: ~a" operator)))))
