@@ -729,20 +729,25 @@ If first is false (0), Z[ enters else-branch → push 0 (short-circuit)."
                                    (cons 'NIL initial-stack)))))
 
 (defun process-dotimes (output-and-stack terms)
-  "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack."
-  ;; Desugared into: (let ((i 0)) (while (< i max) body... (incf i)))
-  ;; This reuses the existing let/while/incf machinery.
+  "Convert a '(dotimes (i 4) ...)' with terms TERMS taking into account current OUTPUT-AND-STACK, and return an updated output-and-stack.
+When the loop variable is _ (unused), generates the simpler N Z< body Z> repeat pattern.
+When the loop variable is named, desugars into let/while/incf."
   (let ((iteration-sexp (car terms))
         (body (cdr terms)))
     (unless (= 2 (length iteration-sexp))
       (error "(dotimes) Malformed iteration term: ~a" iteration-sexp))
     (let ((symbol (car iteration-sexp))
           (max-value (cadr iteration-sexp)))
-      (process-atom-or-sexp output-and-stack
-                            `(let ((,symbol 0))
-                               (while (< ,symbol ,max-value)
-                                 ,@body
-                                 (incf ,symbol)))))))
+      (if (string= "_" (symbol-name symbol))
+          ;; _ means unused variable: use simple repeat N Z< body Z>
+          (process-loop-repeat output-and-stack
+                               (list* 'repeat max-value 'do body))
+          ;; Named variable: desugar into let/while/incf
+          (process-atom-or-sexp output-and-stack
+                                `(let ((,symbol 0))
+                                   (while (< ,symbol ,max-value)
+                                     ,@body
+                                     (incf ,symbol))))))))
 
 ;;; === Arithmetic ===
 

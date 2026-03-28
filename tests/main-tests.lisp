@@ -195,6 +195,21 @@
   (parachute:is string= "0 SPC 0 Z{ RET 5 SPC 1 - a> Z/ C-j C-j + C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL"
                 (extract-calc-output '(let ((sum 0)) (dotimes (i 5) (setq sum (+ sum i))) sum))))
 
+(parachute:define-test test-dotimes-underscore
+  ;; (dotimes (_ 3) (incf x)) with x=0 → x becomes 3 (same as loop repeat 3)
+  (parachute:is string= "0 SPC 3 Z< RET 1 + M-DEL Z> RET M-DEL"
+                (extract-calc-output '(let ((x 0)) (dotimes (_ 3) (incf x)) x))))
+
+(parachute:define-test test-dotimes-underscore-variable-count
+  ;; (dotimes (_ n) (incf x)) with n=5, x=0 → x becomes 5
+  (parachute:is string= "5 SPC 0 C-j Z< RET 1 + M-DEL Z> RET M-DEL M-DEL"
+                (extract-calc-output '(let* ((n 5) (x 0)) (dotimes (_ n) (incf x)) x))))
+
+(parachute:define-test test-dotimes-underscore-multi-body
+  ;; Multiple body forms: (incf x) twice → x incremented by 2 each iteration
+  (parachute:is string= "0 SPC 3 Z< RET 1 + M-DEL RET 1 + M-DEL Z> RET M-DEL"
+                (extract-calc-output '(let ((x 0)) (dotimes (_ 3) (incf x) (incf x)) x))))
+
 (parachute:define-test test-while-<=
   (parachute:is string=
                 "0 Z{ RET 3 a> Z/ RET 1 + M-DEL Z} RET M-DEL"

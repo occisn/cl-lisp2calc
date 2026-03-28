@@ -98,6 +98,7 @@ Recognized Common Lisp macros or functions:
      - `(or expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)
      - `(and expr1 expr2)` (returns 0 or 1, short-circuit via nested conditionals; args can be any comparison including `=`/`>`/`>=`/`<`/`<=`, or nested logical expr)
      - `(if cond ...)` or `(when cond ...)` where `cond` is any logical expression (`=`, `>`, `>=`, `<`, `<=`, `or`, `and`, `not`)
+     - `(dotimes (_ N) body...)` → Calc's `N Z< body Z>` (repeat body N times, unused loop variable)
      - `(loop repeat N do body...)` → Calc's `N Z< body Z>` (repeat body N times)
 
 Recognized operators not available in Common Lisp (internal to `lisp2calc` package, use `l2c::` prefix):
