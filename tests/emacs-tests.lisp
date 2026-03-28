@@ -325,6 +325,22 @@ Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
       res)
    "25164150"))
 
+(parachute:define-test test-emacs-euler-7a
+  (when *run-very-long-emacs-tests*
+    (%check-emacs-result-against
+     '(let ((n 2))
+        (loop repeat 10000 do (setq n (l2c::next-prime n)))
+        n)
+     "104743")))
+
+(parachute:define-test test-emacs-euler-7b
+  (when *run-very-long-emacs-tests*
+    (%check-emacs-result-against
+     '(let ((n 2))
+        (dotimes (_ 10000) (setq n (l2c::next-prime n)))
+        n)
+     "104743")))
+
 (parachute:define-test test-emacs-euler-4
   (when *run-very-long-emacs-tests*
     (%check-emacs-result-against

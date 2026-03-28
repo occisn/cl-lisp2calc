@@ -1207,6 +1207,24 @@ For instance: (3 4) --> '3 SPC 4'
 
   ;; 25164150
 
+  (format t "~%Project Euler 7a:~%-----------------~%")
+
+  (convert
+   '(let ((n 2))
+     (loop repeat 10000 do (setq n (next-prime n)))
+     n))
+
+  ;; 104743
+
+  (format t "~%Project Euler 7b:~%-----------------~%")
+
+  (convert
+   '(let ((n 2))
+     (dotimes (_ 10000) (setq n (next-prime n)))
+     n))
+
+  ;; 104743
+
   ) ; end of main
 
 ;;; end

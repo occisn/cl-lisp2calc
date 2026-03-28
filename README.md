@@ -7,7 +7,7 @@ Table of contents:
 - [About GNU Emacs Calc](#about-gnu-emacs-calc)  
 - [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7a](#project-euler-7a), [7b](#project-euler-7b)
 
 ## Usage
 
@@ -278,6 +278,38 @@ Lisp implementation:
 Calc:
 ```
 100 SPC 0 SPC 0 Z{ RET C-u 4 C-j 1 + 1 - a> Z/ C-j C-j + C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET C-j * M-DEL 0 Z{ RET C-u 4 C-j 1 + 1 - a> Z/ C-j C-j C-u 3 C-j * - C-u 3 M-DEL TAB RET 1 + M-DEL Z} DEL RET M-DEL M-DEL
+```
+
+### Project Euler 7a
+
+_By listing the first six prime numbers: 2, 3, 5, 7, 11, and 13, we can see that the 6th prime is 13. What is the 10001st prime number?_ [(source)](https://projecteuler.net/problem=7)
+
+Lisp implementation (using `loop repeat`):
+``` lisp
+(let ((n 2))
+  (loop repeat 10000 do (setq n (next-prime n)))
+  n)
+```
+
+Calc:
+```
+2 SPC 10000 Z< RET k n M-DEL Z> RET M-DEL
+```
+
+### Project Euler 7b
+
+Same problem, using `dotimes` with `_`:
+
+Lisp implementation:
+``` lisp
+(let ((n 2))
+  (dotimes (_ 10000) (setq n (next-prime n)))
+  n)
+```
+
+Calc:
+```
+2 SPC 10000 Z< RET k n M-DEL Z> RET M-DEL
 ```
 
 (end of README)
