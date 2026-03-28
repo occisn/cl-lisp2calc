@@ -9,9 +9,27 @@ Table of contents:
 - [Testing](#testing)  
 - [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5)
 
-## Usage 
+## Usage
 
-(later)
+```lisp
+;; Load the system:
+(asdf:load-system "cl-lisp2calc")
+
+;; Convert a Lisp expression to a Calc macro:
+(lisp2calc:convert '(+ 3 4))
+```
+
+The `convert` function prints the corresponding Calc keyboard macro:
+```
+output = 3 SPC 4 +
+```
+
+To run it: copy the macro to Emacs, highlight it, `M-x read-kbd-macro`, then go to Calc and press `X`.
+
+The `main` function provides more elaborate examples based on Project Euler problems (see [Applications](#applications)):
+```lisp
+(lisp2calc::main)
+```
 
 ## About Gnu Emacs Calc
 
