@@ -1,3 +1,10 @@
+;;;; Integration tests: run the generated macros in a real Emacs Calc session.
+;;;;
+;;;; Each test converts a form, executes the resulting keyboard macro through
+;;;; "emacs --batch" and elisp/calc-runner.el, and compares Calc's answer with
+;;;; the value Common Lisp computes for the same form.  They are enabled by
+;;;; default; set *RUN-EMACS-TESTS* to NIL to skip them.
+
 (in-package :lisp2calc-tests)
 
 ;;; ===========================
@@ -88,8 +95,11 @@ Returns an alist with keys :STATUS, :RESULT, :STACK-DEPTH, :ERROR."
 
 (defun %result-to-string (value)
   "Convert a CL value to a string comparable with Emacs Calc output.
-Ratios are converted to floats (e.g. 1/4 → \"0.25\")."
+Ratios are converted to floats (e.g. 1/4 → \"0.25\").
+Booleans are converted to \"1\" and \"0\", which is how Calc represents the
+results of comparisons and of logical operations."
   (etypecase value
+    (boolean (if value "1" "0"))
     (ratio (format nil "~F" (float value)))
     (number (write-to-string value))
     (string value)))

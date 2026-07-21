@@ -5,9 +5,10 @@ Hobby project written in Common Lisp, which converts Lisp code (Common Lisp) int
 Table of contents:  
 - [Usage](#usage)  
 - [About GNU Emacs Calc](#about-gnu-emacs-calc)  
-- [Explanations on lisp2calc (the present project](#explanations-on-lisp2calc-the-present-project)  
+- [Explanations on lisp2calc (the present project)](#explanations-on-lisp2calc-the-present-project)  
 - [Testing](#testing)  
-- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7), [9](#project-euler-9), [10](#project-euler-10)
+- [Applications](#applications) : Project Euler [1](#project-euler-1), [2](#project-euler-2), [3](#project-euler-3), [4](#project-euler-4), [5](#project-euler-5), [6](#project-euler-6), [7](#project-euler-7), [9](#project-euler-9), [10](#project-euler-10)  
+- [License](#license)
 
 Related projects:  
 \- [Problem solving in GNU Calc](https://github.com/occisn/calc-problem-solving)  
@@ -357,5 +358,11 @@ Calc:
 ```
 2000000 SPC 2 SPC 0 Z{ C-j C-u 4 C-j 1 - a> Z/ RET C-u 3 C-j + M-DEL C-j k n C-u 3 M-DEL TAB Z} RET M-DEL M-DEL M-DEL
 ```
+
+## License
+
+Copyright (c) 2025 Nicolas Occis
+
+Licensed under the MIT License.
 
 (end of README)

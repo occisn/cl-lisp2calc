@@ -1,3 +1,9 @@
+;;;; Unit tests for the conversion itself.
+;;;;
+;;;; These tests compare the string produced by CONVERT with the expected
+;;;; Calc keystrokes.  They need neither Emacs nor Calc -- see emacs-tests.lisp
+;;;; for the integration tests that actually execute the macros.
+
 (in-package :lisp2calc-tests)
 
 ;;; ===============
@@ -512,6 +518,7 @@
                 (extract-calc-output `(lisp2calc::last-element 12)))
   ;; composed with prime-factorization
   (parachute:is string= "12 k f v v v r 1"
-                (extract-calc-output `(lisp2calc::last-element (lisp2calc::prime-factorization 12)))))
+                (extract-calc-output
+                 `(lisp2calc::last-element (lisp2calc::prime-factorization 12)))))
 
 ;;; end
